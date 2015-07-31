@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="Flex" version="4">
+  <component name="FlexBuildConfigurationManager" active="mediaelement">
+    <configurations>
+      <configuration name="mediaelement" pure-as="true" main-class="FlashMediaElement" output-file="flashmediaelement.swf" output-folder="/sandbox/b-tve/tve-web/assets/tve/common/js/vendor/mediaelementjs">
+        <dependencies target-player="11.1">
+          <entries>
+            <entry library-id="790413f7-9ba7-4465-b34e-0768dfb54c33">
+              <dependency linkage="Include" />
+            </entry>
+            <entry library-name="flashls" library-level="project">
+              <dependency linkage="Include" />
+            </entry>
+          </entries>
+          <sdk name="flex_sdk_4_6" />
+        </dependencies>
+        <compiler-options />
+        <packaging-air-desktop />
+        <packaging-android />
+        <packaging-ios />
+      </configuration>
+    </configurations>
+    <compiler-options />
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/flash">
+      <sourceFolder url="file://$MODULE_DIR$/flash" isTestSource="false" />
+    </content>
+    <orderEntry type="jdk" jdkName="flex_sdk_4_6" jdkType="Flex SDK Type (new)" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library" exported="">
+      <library type="flex">
+        <properties id="790413f7-9ba7-4465-b34e-0768dfb54c33" />
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/flash/flashmediaelement.swc!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" exported="" name="flashls" level="project" />
+  </component>
+</module>

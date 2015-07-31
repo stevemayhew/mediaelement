@@ -103,9 +103,9 @@ package
 			checkFlashVars(loaderInfo.parameters);
 
 			// allows this player to be called from a different domain than the HTML page hosting the player
-            CONFIG::cdnBuild {
-                Security.allowDomain("*");
-                Security.allowInsecureDomain('*');
+      CONFIG::cdnBuild {
+        Security.allowDomain("*");
+        Security.allowInsecureDomain('*');
 			}
 
 
@@ -216,7 +216,7 @@ package
 			if (_isVideo) {
 				if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.m3u8(\?.*)?/i) !== -1) {
 
-					_mediaElement = new HLSMediaElement(this, _autoplay, _preload, _timerRate, _startVolume);
+					_mediaElement = new HLSMediaElement(this, _autoplay, _preload, _timerRate, _startVolume, params);
 					_video = (_mediaElement as HLSMediaElement).video;
 					_video.width = _stageWidth;
 					_video.height = _stageHeight;

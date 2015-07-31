@@ -36,13 +36,14 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
   private var _bufferEmpty:Boolean = false;
   private var _bufferingChanged:Boolean = false;
   private var _seekOffset:Number = 0;
-
+  /** The current quality level. **/
+  public var _level : int;
 
   private var _videoWidth:Number = -1;
   private var _videoHeight:Number = -1;
 
 
-    public function HLSMediaElement(element:FlashMediaElement, autoplay:Boolean, preload:String, timerRate:Number, startVolume:Number)
+    public function HLSMediaElement(element:FlashMediaElement, autoplay:Boolean, preload:String, timerRate:Number, startVolume:Number, params:Object)
     {
       _element = element;
       _autoplay = autoplay;
@@ -50,6 +51,11 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _preload = preload;
       _video = new Video();
       addChild(_video);
+
+     HLSSettings.logDebug = (params['hls.debug'] != undefined);
+     HLSSettings.maxBackBufferLength = (params['hls.maxBackBufferLength'] != undefined) ? params['hls.maxBackBufferLength'] : 30;
+     HLSSettings.maxBufferLength = (params['hls.maxBufferLength'] != undefined) ? params['hls.maxBufferLength'] : 120;
+
 //        HLSSettings.logDebug = true;
       _hls = new HLS();
       _hls.addEventListener(HLSEvent.PLAYBACK_COMPLETE,_completeHandler);
@@ -89,13 +95,14 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _position = event.mediatime.position;
       _duration = event.mediatime.duration;
       _bufferedTime = event.mediatime.buffer+event.mediatime.position;
+      _level = event.level;
       sendEvent(HtmlMediaEvent.PROGRESS);
       sendEvent(HtmlMediaEvent.TIMEUPDATE);
     };
 
     private function _stateHandler(event:HLSEvent):void {
       _hlsState = event.state;
-      //Log.txt("state:"+ _hlsState);
+      Log.info("state:"+ _hlsState);
       switch(event.state) {
           case HLSPlayStates.IDLE:
             break;
@@ -246,6 +253,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       "duration:" + _duration +
         ",framerate:" + _hls.stream.currentFPS +
         ",currentTime:" + _position +
+        ",qualityLevel:" + _level +
         ",muted:" + _isMuted +
         ",paused:" + _isPaused +
         ",ended:" + _isEnded +
