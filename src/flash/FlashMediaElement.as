@@ -82,6 +82,8 @@ package
 		private var _fullscreenIcon:SimpleButton;
 		private var _volumeMuted:SimpleButton;
 		private var _volumeUnMuted:SimpleButton;
+        private var _backButton:SimpleButton;
+      	private var _forwardButton:SimpleButton;
 		private var _scrubTrackColor:String;
 		private var _scrubBarColor:String;
 		private var _scrubLoadedColor:String;
@@ -103,10 +105,10 @@ package
 			checkFlashVars(loaderInfo.parameters);
 
 			// allows this player to be called from a different domain than the HTML page hosting the player
-      CONFIG::cdnBuild {
-        Security.allowDomain("*");
-        Security.allowInsecureDomain('*');
-			}
+            CONFIG::cdnBuild {
+                Security.allowDomain("*");
+                Security.allowInsecureDomain('*');
+            }
 
 
 
@@ -292,6 +294,34 @@ package
 			_pauseButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
 				_mediaElement.pause();
 			});
+
+            var loader:Loader = new Loader();
+            loader.load(new URLRequest('/assets/tve/common/img/player-controls/argon_icon_player_jump_forward.png'));
+            _forwardButton = new SimpleButton(loader, loader, loader, loader);
+
+            loader = new Loader();
+            loader.load(new URLRequest('/assets/tve/common/img/player-controls/argon_icon_player_jump_back_8_seconds.png'));
+            _backButton = new SimpleButton(loader, loader, loader, loader);
+
+
+
+            var playIndex:int = _controlBar.getChildIndex(_pauseButton);
+            _controlBar.addChildAt(_backButton, playIndex);
+
+            _backButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
+                _output.appendText("_backButton click: " + _mediaElement.currentTime() + "\n");
+
+                _mediaElement.setCurrentTime(Math.max(_mediaElement.currentTime() - 8, 0));
+            });
+
+            _controlBar.addChildAt(_forwardButton, playIndex);
+            _forwardButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
+
+                _output.appendText("_forwardButton click: " + _mediaElement.currentTime() + "\n");
+                _mediaElement.setCurrentTime(Math.min(_mediaElement.currentTime() + 30, _mediaElement.seekLimit()));
+            });
+
+
 			_pauseButton.visible = false;
 			_duration = _controlBar.getChildByName("duration_txt") as TextField;
 			_currentTime = _controlBar.getChildByName("currentTime_txt") as TextField;
@@ -314,7 +344,7 @@ package
 				stage.addEventListener(Event.MOUSE_LEAVE, mouseActivityLeave);
 				stage.addEventListener(MouseEvent.MOUSE_MOVE, mouseActivityMove);
 				_inactiveTime = 2500;
-				_timer = new Timer(_inactiveTime)
+				_timer = new Timer(_inactiveTime);
 				_timer.addEventListener(TimerEvent.TIMER, idleTimer);
 				_timer.start();
 				// set
@@ -674,23 +704,33 @@ package
 				_pauseButton.x = _playButton.x = 7;
 				_pauseButton.y = _playButton.y = _controlBarBg.height-_playButton.height-2;
 
+                _backButton.x = _playButton.width + 6;
+                _backButton.y = ((_controlBarBg.height / 2) - (_backButton.height / 2)) + 1;
 
-				//_currentTime.x = stage.stageWidth - _duration.width - 10 - _currentTime.width - 10;
-				_currentTime.x = _playButton.x+_playButton.width;
+				_currentTime.x = _backButton.x + _backButton.width;
 
-				_fullscreenIcon.x = _controlBarBg.width - _fullscreenIcon.width - 7;
+                var leftSideWidth:int = _currentTime.x + _currentTime.width + 10;
+
+
+                _scrubLoaded.x = _scrubBar.x = _scrubOverlay.x = _scrubTrack.x =  leftSideWidth;
+                _scrubLoaded.y = _scrubBar.y = _scrubOverlay.y = _scrubTrack.y = _controlBarBg.height - _scrubTrack.height - 9;
+
+                var rightSideWidth:int = _duration.width + 2 + _forwardButton.width + 2 + _volumeMuted.width + 5 + _fullscreenIcon.width + 7;
+
+                _scrubBar.width =  _scrubOverlay.width = _scrubTrack.width =  _controlBarBg.width - (rightSideWidth + 10 + leftSideWidth);
+
+                _duration.x = _scrubBar.x + _scrubBar.width + 10;
+                _duration.y = _currentTime.y = _controlBarBg.height - _currentTime.height - 7;
+
+                _forwardButton.x = _duration.x + _duration.width + 2;
+                _forwardButton.y = ((_controlBarBg.height / 2) - (_forwardButton.height / 2)) + 1;
+
+                _volumeMuted.x = _volumeUnMuted.x = _forwardButton.x + _forwardButton.width + 2;
+                _volumeMuted.y = _volumeUnMuted.y = 10;
+
+				_fullscreenIcon.x = _volumeMuted.x + _volumeMuted.width + 5;
 				_fullscreenIcon.y = 8;
 
-				_volumeMuted.x = _volumeUnMuted.x = (_isVideo ? _fullscreenIcon.x : _controlBarBg.width) - _volumeMuted.width - 10;
-				_volumeMuted.y = _volumeUnMuted.y = 10;
-
-				_duration.x = _volumeMuted.x - _volumeMuted.width - _duration.width + 5;
-				_duration.y = _currentTime.y = _controlBarBg.height - _currentTime.height - 7;
-
-				_scrubLoaded.x = _scrubBar.x = _scrubOverlay.x = _scrubTrack.x = _currentTime.x + _currentTime.width + 10;
-				_scrubLoaded.y = _scrubBar.y = _scrubOverlay.y = _scrubTrack.y = _controlBarBg.height - _scrubTrack.height - 9;
-
-				_scrubBar.width =  _scrubOverlay.width = _scrubTrack.width =  (_duration.x-_duration.width-10)-_duration.width+5;
 				_controlBar.x = 0;
 				_controlBar.y = stage.stageHeight - _controlBar.height;
 
