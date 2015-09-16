@@ -11,7 +11,7 @@
 
 			// #liveprogress added two divs for dead area
             $(
-               '<div class="mejs-time-rail">' +
+               '<div class="mejs-time-rail" style="position: relative">' +
                 '<span class="time-skipped-by-late-start" style="margin:5px 0; background-color: #dd0000; width:0px"></span>' +
                 '<span  style="margin:5px 0px" class="mejs-time-total mejs-time-slider">' +
                 //'<span class="mejs-offscreen">' + this.options.progessHelpText + '</span>' +
@@ -39,8 +39,8 @@
 				timefloat  = controls.find('.mejs-time-float'),
 				timefloatcurrent  = controls.find('.mejs-time-float-current'),
                 slider = controls.find('.mejs-time-slider'),
-                blockedBegin = controls.find('.mejs-time-blocked-begin'),
-                blockedEnd = controls.find('.mejs-time-blocked-end'),
+                blockedBegin = controls.find('.time-skipped-by-late-start'),
+                blockedEnd = controls.find('.not-yet-recorded'),
 				handleMouseMove = function (e) {
 					
                     var offset = total.offset(),
@@ -274,16 +274,16 @@
                 } 
                 percent = Math.min(1, Math.max(0, percent));
                 var secToPixel = t.rail.width() / t.totalRecordingDuration;
-                var railLeft = t.rail.position().left;
+                //var railLeft = t.rail.position().left;
                 var sliderWidth = t.media.duration * secToPixel;
                 var beginWidth = t.missedRecordingDuration * secToPixel;
                 var endWidth = t.rail.width() - beginWidth - sliderWidth;
                 t.total.width(sliderWidth);
                 t.loaded.width(sliderWidth * percent);
-                t.total.css("left", railLeft + beginWidth);
+                t.total.css("left", beginWidth);
                 t.blockedBegin.width(beginWidth);
                 t.blockedEnd.width(endWidth);
-                t.blockedEnd.css("left", railLeft + beginWidth + sliderWidth);
+                t.blockedEnd.css("left", beginWidth + sliderWidth);
                 
             } else {
                 // we don't really need to set these to zero since player is created each
