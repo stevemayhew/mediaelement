@@ -40,7 +40,26 @@
 				timefloatcurrent  = controls.find('.mejs-time-float-current'),
                 slider = controls.find('.mejs-time-slider'),
                 blockedBegin = controls.find('.mejs-time-blocked-begin'),
-                blockedEnd = controls.find('.mejs-time-blocked-end'),
+                blockedEnd = controls.find('.mejs-time-blocked-end');
+			
+				// #live missed recording time and total recording duration needed for the
+            	// live (dynamic) scrub bar.
+				t.useLiveBar = player.options.recordingInProgress;
+				if (t.useLiveBar) {
+	            	t.missedRecordingDuration = player.options.missedRecordingDuration;
+	            	t.totalRecordingDuration = player.options.totalRecordingDuration;
+	            	t.recordedDuration = player.options.recordedDuration;
+	            	// "recordedDuration" is approximately the length of show recorded at this moment.
+	            	// We make a note of this moment and use it a datum for computing recorded length at
+	            	// some future time. Since we are concerned with relative time (elapsed) therefore
+	            	// we do not care about UTC etc.
+	            	// It will be used as follows:
+	            	// var currentRecordedDuration = t.recordedDuration + (new Date()).getTime() - t.momentOfRecordedDuration;
+	            	
+	            	t.momentOfRecordedDuration = (new Date()).getTime();
+				}
+            	
+			var
 				handleMouseMove = function (e) {
 					
                     var offset = total.offset(),
@@ -49,12 +68,12 @@
 						newTime = 0,
 						pos = 0,
                         x,
-                        duration = t.useLiveBar ? t.totalRecordingDuration : media.duration;
-                    
+                        duration = t.getMediaDuration();
+
                     // mouse or touch position relative to the object
 					if (e.originalEvent.changedTouches) {
 						x = e.originalEvent.changedTouches[0].pageX;
-					}else{
+					} else{
 						x = e.pageX;
 					}
 
@@ -87,18 +106,14 @@
 				lastKeyPressTime = 0,
 				startedPaused = false,
 				autoRewindInitial = player.options.autoRewind;
-                // #live missed recording time and total recording duration needed for the
-                // live (dynamic) scrub bar.
-                t.missedRecordingDuration = player.options.missedRecordingDuration;
-                t.totalRecordingDuration = player.options.totalRecordingDuration;
-                t.useLiveBar = t.missedRecordingDuration != undefined && t.totalRecordingDuration != undefined;
+
             // Accessibility for slider
             var updateSlider = function (e) {
 
 				var seconds = media.currentTime,
 					timeSliderText = mejs.i18n.t('Time Slider'),
 					time = mejs.Utility.secondsToTimeCode(seconds),
-					duration = media.duration;
+					duration = t.getMediaDuration();
 
 				slider.attr({
 					'aria-label': timeSliderText,
@@ -134,7 +149,7 @@
 				}
 
 				var keyCode = e.keyCode,
-					duration = media.duration,
+					duration = t.getMediaDuration(),
 					seekTime = media.currentTime;
 
 				switch (keyCode) {
@@ -172,7 +187,7 @@
 					media.pause();
 				}
 
-				if (seekTime < media.duration && !startedPaused) {
+				if (seekTime < duration && !startedPaused) {
 					setTimeout(restartPlayer, 1100);
 				}
 
@@ -247,8 +262,16 @@
 			var
 				t = this,
 				target = (e !== undefined) ? e.target : t.media,
-				percent = nulll, 
-                targetDuration = t.useLiveBar ? t.totalRecordingDuration : (target ? target.duration : undefined);
+				percent = null, 
+				currentRecordedDuration,
+                targetDuration;
+			
+			if (t.useLiveBar) {
+				currentRecordedDuration = t.getCurrentRecordedDuration();
+				targetDuration = currentRecordedDuration;
+			} else {
+				targetDuration = target ? target.duration : undefined;
+			}
 
 			// newest HTML5 spec has buffered array (FF4, Webkit)
 			 if (target && target.buffered && target.buffered.length > 0 && target.buffered.end && targetDuration) {
@@ -273,17 +296,22 @@
                 if (percent === null) {
                      percent = 0;
                 } 
-                var railLeft = t.rail.position().left;
-                var sliderWidth = t.rail.width() * percent;
-                var beginWidth = t.rail.width() * ( t.missedRecordingDuration / t.totalRecordingDuration);
-                var endWidth = t.rail.width() - beginWidth - sliderWidth;
                 percent = Math.min(1, Math.max(0, percent));
-                t.total.width(sliderWidth);
-                t.loaded.width(sliderWidth);
+                var railLeft = t.rail.position().left;
+                var beginWidth = t.rail.width() * ( t.missedRecordingDuration / t.totalRecordingDuration);
+                var totalWidth = t.rail.width() * ( currentRecordedDuration / t.totalRecordingDuration);
+                var loadedWidth = totalWidth * percent;
+                var endWidth = t.rail.width() - beginWidth - totalWidth;
+                if (endWidth < 0) {
+                	// unlikely, but may happen due to rounding errors
+                	endWidth = 0;
+                }
+                t.total.width(totalWidth);
+                t.loaded.width(loadedWidth);
                 t.total.css("left", railLeft + beginWidth);
                 t.blockedBegin.width(beginWidth);
                 t.blockedEnd.width(endWidth);
-                t.blockedEnd.css("left", railLeft + beginWidth + sliderWidth);
+                t.blockedEnd.css("left", railLeft + beginWidth + totalWidth);
                 
             } else {
                 // we don't really need to set these to zero since player is created each
@@ -307,14 +335,16 @@
 		},
 		setCurrentRail: function() {
 
-			var t = this;
-		
-			if (t.media.currentTime !== undefined && t.media.duration) {
+			var t = this, 
+			        duration = t.getMediaDuration();
+			
+			
+			if (t.media.currentTime !== undefined && duration) {
 
 				// update bar and handle
 				if (t.total && t.handle) {
 					var 
-						newWidth = Math.round(t.total.width() * t.media.currentTime / t.media.duration),
+						newWidth = Math.round(t.total.width() * t.media.currentTime / duration),
 						handlePos = newWidth - Math.round(t.handle.outerWidth(true) / 2);
 
 					t.current.width(newWidth);
@@ -322,6 +352,25 @@
 				}
 			}
 
+		},
+		
+		getCurrentRecordedDuration: function() {
+			var t = this;
+            var currentRecordedDuration = t.recordedDuration + ((new Date()).getTime() - t.momentOfRecordedDuration) / 1000;
+            if (currentRecordedDuration > (t.totalRecordingDuration - t.missedRecordingDuration)) {
+            	currentRecordedDuration =  (t.totalRecordingDuration - t.missedRecordingDuration);
+            }
+            return currentRecordedDuration;
+		},
+		
+		getMediaDuration: function() {
+			var t = this;
+			
+			if (t.useLiveBar) {
+		        return t.getCurrentRecordedDuration();
+		    } else {
+		    	return t.media.duration;
+		    }
 		}
 	});
 })(mejs.$);
