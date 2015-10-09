@@ -11,8 +11,8 @@
 
 			// #liveprogress added two divs for dead area
             $(
-               '<div class="mejs-time-rail" style="position: relative">' +
-                '<span class="time-skipped-by-late-start" style="margin:5px 0; background-color: #dd0000; width:0px"></span>' +
+               '<div class="mejs-time-rail">' +
+                '<span class="mejs-time-skipped-recording"></span>' +
                 '<span  style="margin:5px 0px" class="mejs-time-total mejs-time-slider">' +
                 //'<span class="mejs-offscreen">' + this.options.progessHelpText + '</span>' +
                     '<span class="mejs-time-buffering"></span>' +
@@ -24,7 +24,7 @@
                         '<span class="mejs-time-float-corner"></span>' +
                     '</span>' +
                 '</span>' +
-                '<span class="not-yet-recorded" style="margin:5px 0; background-color: #dd0000; width:0px"></span>' +
+                '<span class="mejs-time-future-recording"></span>' +
                 '</div>')
                 .appendTo(controls);
 			controls.find('.mejs-time-buffering').hide();
@@ -39,8 +39,8 @@
 				timefloat  = controls.find('.mejs-time-float'),
 				timefloatcurrent  = controls.find('.mejs-time-float-current'),
                 slider = controls.find('.mejs-time-slider'),
-                blockedBegin = controls.find('.time-skipped-by-late-start'),
-                blockedEnd = controls.find('.not-yet-recorded'),
+                blockedBegin = controls.find('.mejs-time-skipped-recording'),
+                blockedEnd = controls.find('.mejs-time-future-recording'),
 				handleMouseMove = function (e) {
 					
                     var offset = total.offset(),
@@ -277,14 +277,13 @@
                 //var railLeft = t.rail.position().left;
                 var sliderWidth = t.media.duration * secToPixel;
                 var beginWidth = t.missedRecordingDuration * secToPixel;
-                var endWidth = t.rail.width() - beginWidth - sliderWidth;
+                var endWidth = t.rail.width() - (beginWidth + sliderWidth);
                 t.total.width(sliderWidth);
                 t.loaded.width(sliderWidth * percent);
                 t.total.css("left", beginWidth);
                 t.blockedBegin.width(beginWidth);
                 t.blockedEnd.width(endWidth);
-                t.blockedEnd.css("left", beginWidth + sliderWidth);
-                
+
             } else {
                 // we don't really need to set these to zero since player is created each
                 // time new recording is played. These statements are here to emphasize that
