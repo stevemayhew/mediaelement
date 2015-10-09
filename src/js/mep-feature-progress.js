@@ -9,23 +9,29 @@
 	$.extend(MediaElementPlayer.prototype, {
 		buildprogress: function(player, controls, layers, media) {
 
-			$('<div class="mejs-time-rail">' +
-				'<span  class="mejs-time-total mejs-time-slider">' +
-				//'<span class="mejs-offscreen">' + this.options.progessHelpText + '</span>' +
-				'<span class="mejs-time-buffering"></span>' +
-				'<span class="mejs-time-loaded"></span>' +
-				'<span class="mejs-time-current"></span>' +
-				'<span class="mejs-time-handle"></span>' +
-				'<span class="mejs-time-float">' +
-				'<span class="mejs-time-float-current">00:00</span>' +
-				'<span class="mejs-time-float-corner"></span>' +
-				'</span>' +
-				'</div>')
-				.appendTo(controls);
+			// #liveprogress added two divs for dead area
+            $(
+               '<div class="mejs-time-rail">' +
+                '<span class="mejs-time-skipped-recording"></span>' +
+                '<span  style="margin:5px 0px" class="mejs-time-total mejs-time-slider">' +
+                //'<span class="mejs-offscreen">' + this.options.progessHelpText + '</span>' +
+                    '<span class="mejs-time-buffering"></span>' +
+                    '<span class="mejs-time-loaded"></span>' +
+                    '<span class="mejs-time-current"></span>' +
+                    '<span class="mejs-time-handle"></span>' +
+                    '<span class="mejs-time-float">' +
+                        '<span class="mejs-time-float-current">00:00</span>' +
+                        '<span class="mejs-time-float-corner"></span>' +
+                    '</span>' +
+                '</span>' +
+                '<span class="mejs-time-future-recording"></span>' +
+                '</div>')
+                .appendTo(controls);
 			controls.find('.mejs-time-buffering').hide();
 
 			var 
 				t = this,
+                rail = controls.find('.mejs-time-rail'),
 				total = controls.find('.mejs-time-total'),
 				loaded  = controls.find('.mejs-time-loaded'),
 				current  = controls.find('.mejs-time-current'),
@@ -33,6 +39,8 @@
 				timefloat  = controls.find('.mejs-time-float'),
 				timefloatcurrent  = controls.find('.mejs-time-float-current'),
                 slider = controls.find('.mejs-time-slider'),
+                blockedBegin = controls.find('.mejs-time-skipped-recording'),
+                blockedEnd = controls.find('.mejs-time-future-recording'),
 				handleMouseMove = function (e) {
 					
                     var offset = total.offset(),
@@ -78,6 +86,11 @@
 				lastKeyPressTime = 0,
 				startedPaused = false,
 				autoRewindInitial = player.options.autoRewind;
+                // #live missed recording time and total recording duration needed for the
+                // live (dynamic) scrub bar.
+                t.missedRecordingDuration = player.options.missedRecordingDuration;
+                t.totalRecordingDuration = player.options.totalRecordingDuration;
+                t.useLiveBar = t.missedRecordingDuration != undefined && t.totalRecordingDuration != undefined;
             // Accessibility for slider
             var updateSlider = function (e) {
 
@@ -220,23 +233,28 @@
 			
 			
 			// store for later use
+            t.rail = rail;
 			t.loaded = loaded;
 			t.total = total;
 			t.current = current;
 			t.handle = handle;
+            t.blockedBegin = blockedBegin;
+            t.blockedEnd = blockedEnd;
 		},
 		setProgressRail: function(e) {
 
 			var
 				t = this,
 				target = (e !== undefined) ? e.target : t.media,
-				percent = null;
+				percent = null, 
+                targetDuration = target ? target.duration : undefined;
 
 			// newest HTML5 spec has buffered array (FF4, Webkit)
-			if (target && target.buffered && target.buffered.length > 0 && target.buffered.end && target.duration) {
-				// TODO: account for a real array with multiple values (only Firefox 4 has this so far) 
-				percent = target.buffered.end(0) / target.duration;
-			} 
+			 if (target && target.buffered && target.buffered.length > 0 && target.buffered.end && targetDuration) {
+                // account for a real array with multiple values - always read the end of the last buffer
+                percent = target.buffered.end(target.buffered.length - 1) / targetDuration;
+                //console.error(percent + " : " + target.buffered.end(target.buffered.length - 1));
+            }  
 			// Some browsers (e.g., FF3.6 and Safari 5) cannot calculate target.bufferered.end()
 			// to be anything other than 0. If the byte count is available we use this instead.
 			// Browsers that support the else if do not seem to have the bufferedBytes value and
@@ -249,14 +267,42 @@
 				percent = e.loaded / e.total;
 			}
 
-			// finally update the progress bar
-			if (percent !== null) {
-				percent = Math.min(1, Math.max(0, percent));
-				// update loaded bar
-				if (t.loaded && t.total) {
-					t.loaded.width(t.total.width() * percent);
-				}
-			}
+			if (t.useLiveBar) {
+                // logic for live bar
+                if (percent === null) {
+                     percent = 0;
+                } 
+                percent = Math.min(1, Math.max(0, percent));
+                var secToPixel = t.rail.width() / t.totalRecordingDuration;
+                //var railLeft = t.rail.position().left;
+                var sliderWidth = t.media.duration * secToPixel;
+                var beginWidth = t.missedRecordingDuration * secToPixel;
+                var endWidth = t.rail.width() - (beginWidth + sliderWidth);
+                t.total.width(sliderWidth);
+                t.loaded.width(sliderWidth * percent);
+                t.total.css("left", beginWidth);
+                t.blockedBegin.width(beginWidth);
+                t.blockedEnd.width(endWidth);
+
+            } else {
+                // we don't really need to set these to zero since player is created each
+                // time new recording is played. These statements are here to emphasize that
+                // setting dead ends width zero leads to the original logic.
+                t.blockedBegin.width(0);
+                t.blockedEnd.width(0);
+                
+                // logic for original scrub bar intact
+                
+               
+                // finally update the progress bar
+                if (percent !== null) {
+                    percent = Math.min(1, Math.max(0, percent));
+                    // update loaded bar
+                    if (t.loaded && t.total) {
+                        t.loaded.width(t.total.width() * percent);
+                    }
+                }
+            }
 		},
 		setCurrentRail: function() {
 
