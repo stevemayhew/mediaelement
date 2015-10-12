@@ -57,7 +57,7 @@
 						x = e.pageX;
 					}
 
-					if (media.duration) {
+					if (t.getCurrentRecordedTime()) {
 						if (x < offset.left) {
 							x = offset.left;
 						} else if (x > width + offset.left) {
@@ -66,7 +66,7 @@
 						
 						pos = x - offset.left;
 						percentage = (pos / width);
-						newTime = (percentage <= 0.02) ? 0 : percentage * media.duration;
+						newTime = (percentage <= 0.02) ? 0 : percentage * t.getCurrentRecordedTime();
 
 						// seek to where the mouse is
 						if (mouseIsDown && newTime !== media.currentTime) {
@@ -90,6 +90,9 @@
                 // live (dynamic) scrub bar.
                 t.missedRecordingDuration = player.options.missedRecordingDuration;
                 t.totalRecordingDuration = player.options.totalRecordingDuration;
+                // Since we can not get the accurate GMT time on client machine, we note
+                // the time when ""actualStart" occurs which is this moment (+- 1 or 2 seconds).
+                t.timeOfActualStart = (new Date()).getTime();
                 t.useLiveBar = t.missedRecordingDuration != undefined && t.totalRecordingDuration != undefined;
             // Accessibility for slider
             var updateSlider = function (e) {
@@ -97,7 +100,7 @@
 				var seconds = media.currentTime,
 					timeSliderText = mejs.i18n.t('Time Slider'),
 					time = mejs.Utility.secondsToTimeCode(seconds),
-					duration = media.duration;
+					duration = t.getCurrentRecordedTime();
 
 				slider.attr({
 					'aria-label': timeSliderText,
@@ -133,7 +136,7 @@
 				}
 
 				var keyCode = e.keyCode,
-					duration = media.duration,
+					duration = t.getCurrentRecordedTime(),
 					seekTime = media.currentTime;
 
 				switch (keyCode) {
@@ -171,7 +174,7 @@
 					media.pause();
 				}
 
-				if (seekTime < media.duration && !startedPaused) {
+				if (seekTime < t.getCurrentRecordedTime() && !startedPaused) {
 					setTimeout(restartPlayer, 1100);
 				}
 
@@ -275,7 +278,7 @@
                 percent = Math.min(1, Math.max(0, percent));
                 var secToPixel = t.rail.width() / t.totalRecordingDuration;
                 //var railLeft = t.rail.position().left;
-                var sliderWidth = t.media.duration * secToPixel;
+                var sliderWidth = t.getCurrentRecordedTime() * secToPixel;
                 var beginWidth = t.missedRecordingDuration * secToPixel;
                 var endWidth = t.rail.width() - (beginWidth + sliderWidth);
                 t.total.width(sliderWidth);
@@ -308,12 +311,12 @@
 
 			var t = this;
 		
-			if (t.media.currentTime !== undefined && t.media.duration) {
+			if (t.media.currentTime !== undefined && t.getCurrentRecordedTime()) {
 
 				// update bar and handle
 				if (t.total && t.handle) {
 					var 
-						newWidth = Math.round(t.total.width() * t.media.currentTime / t.media.duration),
+						newWidth = Math.round(t.total.width() * t.media.currentTime / t.getCurrentRecordedTime()),
 						handlePos = newWidth - Math.round(t.handle.outerWidth(true) / 2);
 
 					t.current.width(newWidth);
@@ -321,6 +324,16 @@
 				}
 			}
 
+		},
+		
+		getCurrentRecordedTime: function() {
+		   var t = this;
+		   if (t.media.duration && t.media.duration !== Infinity) {
+			   return t.media.duration;
+		   } else {
+			   // return seconds elapsed since start
+			   return ((new Date()).getTime() - t.timeOfActualStart) / 1000;
+		   }
 		}
 	});
 })(mejs.$);
