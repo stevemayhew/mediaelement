@@ -13,7 +13,7 @@
             $(
                '<div class="mejs-time-rail">' +
                 '<span class="mejs-time-skipped-recording"></span>' +
-                '<span  style="margin:5px 0px" class="mejs-time-total mejs-time-slider">' +
+                '<span class="mejs-time-total mejs-time-slider">' +
                 //'<span class="mejs-offscreen">' + this.options.progessHelpText + '</span>' +
                     '<span class="mejs-time-buffering"></span>' +
                     '<span class="mejs-time-loaded"></span>' +
