@@ -90,9 +90,7 @@
                 // live (dynamic) scrub bar.
                 t.missedRecordingDuration = player.options.missedRecordingDuration;
                 t.totalRecordingDuration = player.options.totalRecordingDuration;
-                // Since we can not get the accurate GMT time on client machine, we note
-                // the time when ""actualStart" occurs which is this moment (+- 1 or 2 seconds).
-                t.timeOfActualStart = (new Date()).getTime();
+				// use the "live" scrub bar for recordings in progress.
                 t.useLiveBar = t.missedRecordingDuration != undefined && t.totalRecordingDuration != undefined;
             // Accessibility for slider
             var updateSlider = function (e) {
@@ -332,7 +330,7 @@
 			   return t.media.duration;
 		   } else {
 			   // return seconds elapsed since start
-			   return ((new Date()).getTime() - t.timeOfActualStart) / 1000;
+			   return t.media.currentTime;
 		   }
 		}
 	});
