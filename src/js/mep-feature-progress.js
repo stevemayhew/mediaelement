@@ -88,8 +88,15 @@
 				autoRewindInitial = player.options.autoRewind;
 			// #live missed recording time and total recording duration needed for the
 			// live (dynamic) scrub bar.
-			t.missedRecordingDuration = player.options.missedRecordingDuration;
+			// Make sure missedRecordingDuration is a number. Other fields can be undefined.
+			t.missedRecordingDuration = player.options.missedRecordingDuration || 0;
+			t.recordedDuration = player.options.recordedDuration;
 			t.totalRecordingDuration = player.options.totalRecordingDuration;
+			// Keep track of when playback starts, in case we need to calculate the recorded duration.
+			// This assumes that if we're recording, recording will continue in real-time while we play,
+			// even if the user pauses.
+			t.playbackStartTime = new Date().getTime();
+			//console.info('missed:' + t.missedRecordingDuration + ', recorded: ' + t.recordedDuration + ', total:' + t.totalRecordingDuration);
 			// Accessibility for slider
 			var updateSlider = function (e) {
 
@@ -244,12 +251,12 @@
 
 			var t = this;
 
-			var pixelsPerSec = t.rail.width() / t.totalRecordingDuration;
-			var railTime = t.totalRecordingDuration;
+			var railTime = t.getTotalRecordingDuration();
+			var pixelsPerSec = t.rail.width() / railTime;
 			var beforeTime = t.missedRecordingDuration;
 			var sliderTime = t.getCurrentRecordedTime();
 			var bufferedTime = sliderTime - t.media.currentTime;
-			var afterTime = t.totalRecordingDuration - beforeTime - sliderTime;
+			var afterTime = railTime - beforeTime - sliderTime;
 			//console.info('r:' + railTime + ', b:' + beforeTime + ', s:' + sliderTime + ', B:' + bufferedTime + ', a:' + afterTime);
 			var railWidth = railTime * pixelsPerSec;
 			var beforeWidth = beforeTime * pixelsPerSec;
@@ -282,26 +289,57 @@
 
 		},
 
+		getTotalRecordingDuration: function() {
+			var t = this;
+			var totalRecordingDuration = t.media.duration;
+
+			// Start with t.media.duration as the final fallback. In the case
+			// of a complete recording, it will be the correct value.
+			// If totalRecordingDuration was passed in, it will take precedence.
+			// We do this in case we are playing back an in-progress recording,
+			// where t.media.duration is constantly increasing. For playback
+			// of an in-progress recording on Safari, where no totalRecordingDuration
+			// has been specified, this will be Infinity, so as the final fallback, we
+			// try to figure out how much as been buffered so far. Not necessarily accurate.
+
+			if (t.totalRecordingDuration) {
+				totalRecordingDuration = t.totalRecordingDuration;
+			} else if (t.media.duration === Infinity) {
+				totalRecordingDuration = t.getCurrentRecordedTime();
+			}
+
+			return totalRecordingDuration;
+		},
+
 		getCurrentRecordedTime: function() {
 			var t = this;
 			// Start with a worst-case scenario return value, where we know nothing about buffering.
-			var bufferedEndTime = t.media.currentTime;
+			var recordedEndTime = t.media.currentTime;
 			var bufferLength = t.media.buffered.length;
 
 			//console.info('gcrt.duration:' + t.media.duration);
 
 			if (t.media.duration && t.media.duration !== Infinity) {
 				// We have a duration. Will be Infinity for an in-progress recording on Safari.
-				bufferedEndTime = t.media.duration;
+				recordedEndTime = t.media.duration;
+			} else if (t.recordedDuration !== undefined) {
+				// First, find the number of seconds since playback began.
+				recordedEndTime = (new Date().getTime() - t.playbackStartTime) / 1000;
+				// Then, add in any pre-recorded portion, making sure we don't go past the total.
+				// We need to use totalRecordingDuration here, and not t.media.duration, since we
+				// lucked out on using that, up above.
+				recordedEndTime = Math.min(recordedEndTime + t.recordedDuration, t.totalRecordingDuration);
 			} else if (t.media.buffered && t.media.buffered.end && t.media.buffered.length) {
+				// Last chance is to find out how much data is actually buffered. That's all that
+				// this player actually knows about, so we use that (for lack of any other info).
 				// Find the buffer containing the current playback time and return its endTime.
 				for (var j=0; j < t.media.buffered.length; j++) {
 					var startTime = t.media.buffered.start(j);
 					var endTime = t.media.buffered.end(j);
-					//console.info('s:' + startTime + ', c:' + bufferedEndTime + ', e:' + endTime);
-					// bufferedEndTime is a copy of t.media.currentTime. Shorter reference chain, this way.
-					if (startTime <= bufferedEndTime && bufferedEndTime <= endTime) {
-						bufferedEndTime = endTime;
+					//console.info('s:' + startTime + ', c:' + recordedEndTime + ', e:' + endTime);
+					// recordedEndTime is a copy of t.media.currentTime. Shorter reference chain, this way.
+					if (startTime <= recordedEndTime && recordedEndTime <= endTime) {
+						recordedEndTime = endTime;
 						bufferLength += '.'+j;
 						break;
 					}
@@ -309,8 +347,8 @@
 				// If we cannot find the right buffer, return current time, as a last ditch effort.
 			}
 
-			//console.info(bufferLength + ' : ' + 'getCurrentRecordedTime() => ' + bufferedEndTime + ' ' + (bufferedEndTime - t.media.currentTime));
-			return bufferedEndTime;
+			console.info(bufferLength + ' : ' + 'getCurrentRecordedTime() => ' + recordedEndTime + ' ' + (recordedEndTime - t.media.currentTime));
+			return recordedEndTime;
 		}
 	});
 })(mejs.$);
