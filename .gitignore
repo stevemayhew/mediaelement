@@ -10,3 +10,4 @@ newfeatures/*
 /mejs3/
 node_modules
 local-build
+.idea/*
