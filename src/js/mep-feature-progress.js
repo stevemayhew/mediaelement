@@ -29,7 +29,7 @@
                 .appendTo(controls);
 			controls.find('.mejs-time-buffering').hide();
 
-			var 
+			var
 				t = this,
                 rail = controls.find('.mejs-time-rail'),
 				total = controls.find('.mejs-time-total'),
@@ -42,14 +42,14 @@
                 blockedBegin = controls.find('.mejs-time-skipped-recording'),
                 blockedEnd = controls.find('.mejs-time-future-recording'),
 				handleMouseMove = function (e) {
-					
+
                     var offset = total.offset(),
 						width = total.outerWidth(true),
 						percentage = 0,
 						newTime = 0,
 						pos = 0,
                         x;
-                    
+
                     // mouse or touch position relative to the object
 					if (e.originalEvent.changedTouches) {
 						x = e.originalEvent.changedTouches[0].pageX;
@@ -63,7 +63,7 @@
 						} else if (x > width + offset.left) {
 							x = width + offset.left;
 						}
-						
+
 						pos = x - offset.left;
 						percentage = (pos / width);
 						newTime = (percentage <= 0.02) ? 0 : percentage * t.getCurrentRecordedTime();
@@ -86,16 +86,19 @@
 				lastKeyPressTime = 0,
 				startedPaused = false,
 				autoRewindInitial = player.options.autoRewind;
-                // #live missed recording time and total recording duration needed for the
-                // live (dynamic) scrub bar.
-                t.missedRecordingDuration = player.options.missedRecordingDuration;
-                t.totalRecordingDuration = player.options.totalRecordingDuration;
-                // Since we can not get the accurate GMT time on client machine, we note
-                // the time when ""actualStart" occurs which is this moment (+- 1 or 2 seconds).
-                t.timeOfActualStart = (new Date()).getTime();
-                t.useLiveBar = t.missedRecordingDuration != undefined && t.totalRecordingDuration != undefined;
-            // Accessibility for slider
-            var updateSlider = function (e) {
+			// #live missed recording time and total recording duration needed for the
+			// live (dynamic) scrub bar.
+			// Make sure missedRecordingDuration is a number. Other fields can be undefined.
+			t.missedRecordingDuration = player.options.missedRecordingDuration || 0;
+			t.recordedDuration = player.options.recordedDuration;
+			t.totalRecordingDuration = player.options.totalRecordingDuration;
+			// Keep track of when playback starts, in case we need to calculate the recorded duration.
+			// This assumes that if we're recording, recording will continue in real-time while we play,
+			// even if the user pauses.
+			t.playbackStartTime = new Date().getTime();
+			//console.info('missed:' + t.missedRecordingDuration + ', recorded: ' + t.recordedDuration + ', total:' + t.totalRecordingDuration);
+			// Accessibility for slider
+			var updateSlider = function (e) {
 
 				var seconds = media.currentTime,
 					timeSliderText = mejs.i18n.t('Time Slider'),
@@ -113,7 +116,7 @@
 				});
 
 			};
-            
+
             var restartPlayer = function () {
 				var now = new Date();
 				if (now - lastKeyPressTime >= 1000) {
@@ -233,8 +236,8 @@
 				player.setCurrentRail(e);
 				updateSlider(e);
 			}, false);
-			
-			
+
+
 			// store for later use
             t.rail = rail;
 			t.loaded = loaded;
@@ -246,76 +249,36 @@
 		},
 		setProgressRail: function(e) {
 
-			var
-				t = this,
-				target = (e !== undefined) ? e.target : t.media,
-				percent = null, 
-                targetDuration = target ? target.duration : undefined;
+			var t = this;
 
-			// newest HTML5 spec has buffered array (FF4, Webkit)
-			 if (target && target.buffered && target.buffered.length > 0 && target.buffered.end && targetDuration) {
-                // account for a real array with multiple values - always read the end of the last buffer
-                percent = target.buffered.end(target.buffered.length - 1) / targetDuration;
-                //console.error(percent + " : " + target.buffered.end(target.buffered.length - 1));
-            }  
-			// Some browsers (e.g., FF3.6 and Safari 5) cannot calculate target.bufferered.end()
-			// to be anything other than 0. If the byte count is available we use this instead.
-			// Browsers that support the else if do not seem to have the bufferedBytes value and
-			// should skip to there. Tested in Safari 5, Webkit head, FF3.6, Chrome 6, IE 7/8.
-			else if (target && target.bytesTotal !== undefined && target.bytesTotal > 0 && target.bufferedBytes !== undefined) {
-				percent = target.bufferedBytes / target.bytesTotal;
-			}
-			// Firefox 3 with an Ogg file seems to go this way
-			else if (e && e.lengthComputable && e.total !== 0) {
-				percent = e.loaded / e.total;
-			}
-
-			if (t.useLiveBar) {
-                // logic for live bar
-                if (percent === null) {
-                     percent = 0;
-                } 
-                percent = Math.min(1, Math.max(0, percent));
-                var secToPixel = t.rail.width() / t.totalRecordingDuration;
-                //var railLeft = t.rail.position().left;
-                var sliderWidth = t.getCurrentRecordedTime() * secToPixel;
-                var beginWidth = t.missedRecordingDuration * secToPixel;
-                var endWidth = t.rail.width() - (beginWidth + sliderWidth);
-                t.total.width(sliderWidth);
-                t.loaded.width(sliderWidth * percent);
-                t.total.css("left", beginWidth);
-                t.blockedBegin.width(beginWidth);
-                t.blockedEnd.width(endWidth);
-
-            } else {
-                // we don't really need to set these to zero since player is created each
-                // time new recording is played. These statements are here to emphasize that
-                // setting dead ends width zero leads to the original logic.
-                t.blockedBegin.width(0);
-                t.blockedEnd.width(0);
-                
-                // logic for original scrub bar intact
-                
-               
-                // finally update the progress bar
-                if (percent !== null) {
-                    percent = Math.min(1, Math.max(0, percent));
-                    // update loaded bar
-                    if (t.loaded && t.total) {
-                        t.loaded.width(t.total.width() * percent);
-                    }
-                }
-            }
+			var railTime = t.getTotalRecordingDuration();
+			var pixelsPerSec = t.rail.width() / railTime;
+			var beforeTime = t.missedRecordingDuration;
+			var sliderTime = t.getCurrentRecordedTime();
+			var bufferedTime = sliderTime - t.media.currentTime;
+			var afterTime = railTime - beforeTime - sliderTime;
+			//console.info('r:' + railTime + ', b:' + beforeTime + ', s:' + sliderTime + ', B:' + bufferedTime + ', a:' + afterTime);
+			var railWidth = railTime * pixelsPerSec;
+			var beforeWidth = beforeTime * pixelsPerSec;
+			var sliderWidth = sliderTime * pixelsPerSec;
+			var bufferedWidth = bufferedTime * pixelsPerSec;
+			var afterWidth = afterTime * pixelsPerSec;
+			//console.info('rw:' + railWidth + ', bw:' + beforeWidth + ', sw:' + sliderWidth + ', Bw:' + bufferedWidth + ', aw:' + afterWidth);
+			t.total.width(sliderWidth);
+			t.loaded.width(sliderWidth - bufferedWidth);
+			t.total.css("left", beforeWidth);
+			t.blockedBegin.width(beforeWidth);
+			t.blockedEnd.width(afterWidth);
 		},
 		setCurrentRail: function() {
 
 			var t = this;
-		
+
 			if (t.media.currentTime !== undefined && t.getCurrentRecordedTime()) {
 
 				// update bar and handle
 				if (t.total && t.handle) {
-					var 
+					var
 						newWidth = Math.round(t.total.width() * t.media.currentTime / t.getCurrentRecordedTime()),
 						handlePos = newWidth - Math.round(t.handle.outerWidth(true) / 2);
 
@@ -325,15 +288,53 @@
 			}
 
 		},
-		
+
+		getTotalRecordingDuration: function() {
+			var t = this;
+			var totalRecordingDuration = t.media.duration;
+
+			// Start with t.media.duration as the final fallback. In the case
+			// of a complete recording, it will be the correct value.
+			// If totalRecordingDuration was passed in, it will take precedence.
+			// We do this in case we are playing back an in-progress recording,
+			// where t.media.duration is constantly increasing. For playback
+			// of an in-progress recording on Safari, where no totalRecordingDuration
+			// has been specified, this will be Infinity, so as the final fallback, we
+			// try to figure out how much as been buffered so far. Not necessarily accurate.
+
+			if (t.totalRecordingDuration) {
+				totalRecordingDuration = t.totalRecordingDuration;
+			} else if (t.media.duration === Infinity) {
+				totalRecordingDuration = t.getCurrentRecordedTime();
+			}
+
+			return totalRecordingDuration;
+		},
+
 		getCurrentRecordedTime: function() {
-		   var t = this;
-		   if (t.media.duration && t.media.duration !== Infinity) {
-			   return t.media.duration;
-		   } else {
-			   // return seconds elapsed since start
-			   return ((new Date()).getTime() - t.timeOfActualStart) / 1000;
-		   }
+			var t = this;
+			// Start with a worst-case scenario return value, where we know nothing about buffering.
+			var recordedEndTime = 0;
+
+			//console.info('gcrt.duration:' + t.media.duration);
+
+			if (t.recordedDuration !== undefined) {
+				// First, find the number of seconds since playback began.
+				recordedEndTime = (new Date().getTime() - t.playbackStartTime) / 1000;
+				// Then, add in any pre-recorded portion, making sure we don't go past the total.
+				// We need to use totalRecordingDuration here, and not t.media.duration, since we
+				// cannot depend on it for a recording in-progress. Assuming that if t.recordingDuration
+				// is defined, t.totalRecordingDuration is also defined.
+				recordedEndTime = Math.min(recordedEndTime + t.recordedDuration, t.totalRecordingDuration);
+			} else if (t.media.duration && t.media.duration !== Infinity) {
+				// We have a duration, but it will be Infinity for an in-progress recording on Safari.
+				recordedEndTime = t.media.duration;
+			} else {
+				//recordedEndTime = 0;
+			}
+
+			//console.info('getCurrentRecordedTime() => ' + recordedEndTime + ' ' + (recordedEndTime - t.media.currentTime));
+			return recordedEndTime;
 		}
 	});
 })(mejs.$);
