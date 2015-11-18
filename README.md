@@ -21,6 +21,8 @@ A complete HTML/CSS audio/video player built on top `MediaElement.js` and `jQuer
 1. Install node and npm (I got errors with version 0.something. Updating to the latest, currently 2.14, fixed them)
 2. Install Grunt CLI ('npm install -g grunt-cli')
 3. Clone the project locally and open the project folder
+	URL: git@smayhew-t7500:tve/mediaelement-tivo.git
+	Branch: flashls-dev
 4. Run 'npm install' to install the project's Grunt dependencies
 5. Open Gruntfile.js and follow the directions to compile flashmediaelement.swf
 
