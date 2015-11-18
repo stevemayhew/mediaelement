@@ -17,30 +17,30 @@ _MediaElementPlayer: HTML5 `<video>` and `<audio>` player_
 A complete HTML/CSS audio/video player built on top `MediaElement.js` and `jQuery`. Many great HTML5 players have a completely separate Flash UI in fallback mode, but MediaElementPlayer.js uses the same HTML/CSS for all players.
 
 ## How to Install
-##### The following steps explain how to install on Linux and Mac machines.
-##### Haven't been able to get this to work on Windows.
+#### The following steps explain how to install on Linux and Mac machines.
+#### Haven't been able to get this to work on Windows.
 
 1. Install node and npm (I got errors with version 0.something. Updating to the latest, currently 2.14, fixed them)
 2. Install Grunt CLI ('npm install -g grunt-cli')
 3. Clone the project locally and open the project folder with these commands:
-* $ git clone git@smayhew-t7500:tve/mediaelement-tivo.git
-* $ git checkout flashls-dev
+	* $ git clone git@smayhew-t7500:tve/mediaelement-tivo.git
+	* $ git checkout flashls-dev
 4. Run 'npm install' to install the project's Grunt dependencies
 
-These next set of steps are from the Gruntfile to compile flashmediaelement.swf, reproduced here (for Linux):
+	These next set of steps are from the Gruntfile to compile flashmediaelement.swf, reproduced here (for Linux):  
 5. Download the Flex SDK version 4.6 from Adobe website and unzip it to a local directory
 6. In Gruntfile.js, update the 'flexPath' variable to point to the Flex SDK directory
 7. Make sure Java path (JAVA_HOME in Windows) points to a 32-bit version of JDK
 
 
-To build on Mac, follow steps 1 through 4 then do this:
+	To build on Mac, follow steps 1 through 4 then do this:  
 
 5. Install flex sdk if you don't have it on your computer already
 6. In the mediaelement folder, run the following command: ln -s /Users/username/flex_sdk_4.6 ../flex_sdk_4.6
 (This meant that you shouldn't need to update anything in Gruntfile.js)
 7. Build the flash file as Superuser: sudo grunt shell:buildFlash
 
-This last step is for all platforms:
+	This last step is for all platforms:  
 8. Run 'grunt --features=playpause,volume,skipback,progress,current,jumpforward,tracks,fullscreen' 
 
 
