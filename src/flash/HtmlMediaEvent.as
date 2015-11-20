@@ -28,5 +28,7 @@
 
 		// new : 2/18/2014
 		public static var KEYDOWN:String = "keydown";
+
+		public static var ID3UPDATED:String = "id3updated";
 	}
 }

@@ -63,11 +63,16 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _hls.addEventListener(HLSEvent.MANIFEST_LOADED,_manifestHandler);
       _hls.addEventListener(HLSEvent.MEDIA_TIME,_mediaTimeHandler);
       _hls.addEventListener(HLSEvent.PLAYBACK_STATE,_stateHandler);
+      _hls.addEventListener(HLSEvent.ID3_UPDATED,_id3Handler);
       _hls.stream.soundTransform = new SoundTransform(_volume);
       _video.attachNetStream(_hls.stream);
     }
 
-    private function _completeHandler(event:HLSEvent):void {
+    private function _id3Handler(event: HLSEvent):void {
+      _element.sendEvent(HtmlMediaEvent.ID3UPDATED, 'ID3Data:' + '"'+event.ID3Data+'"');
+    }
+
+  private function _completeHandler(event:HLSEvent):void {
       _isEnded = true;
       _isPaused = false;
       sendEvent(HtmlMediaEvent.ENDED);
