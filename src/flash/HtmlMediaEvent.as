@@ -29,6 +29,9 @@
 		// new : 2/18/2014
 		public static var KEYDOWN:String = "keydown";
 
+        // Non-HTML5 standard
+        public static var LEVEL_SWITCH:String = "hlsLevelSwitch";
+        public static var FRAGMENT_LOAD:String = "hlsFragmentLoad";
 		public static var ID3UPDATED:String = "id3updated";
 	}
 }
