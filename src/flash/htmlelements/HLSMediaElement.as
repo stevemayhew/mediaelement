@@ -1,13 +1,19 @@
 ﻿package htmlelements
 {
-  import flash.display.Sprite;
-  import flash.media.Video;
-  import flash.media.SoundTransform;
-  import org.mangui.hls.HLS;
-  import org.mangui.hls.HLSSettings;
-  import org.mangui.hls.event.HLSEvent;
-  import org.mangui.hls.constant.HLSPlayStates;
-  import org.mangui.hls.utils.Log;
+import flash.display.Sprite;
+import flash.media.SoundTransform;
+import flash.media.Video;
+
+import htmlelements.HLS.FragmentLoadMetrics;
+
+import htmlelements.HLS.VariantPlaylistInfo;
+
+import org.mangui.hls.HLS;
+import org.mangui.hls.HLSSettings;
+import org.mangui.hls.constant.HLSPlayStates;
+import org.mangui.hls.event.HLSEvent;
+import org.mangui.hls.model.Level;
+import org.mangui.hls.utils.Log;
 
 public class HLSMediaElement extends Sprite implements IMediaElement {
 
@@ -36,8 +42,11 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
   private var _bufferEmpty:Boolean = false;
   private var _bufferingChanged:Boolean = false;
   private var _seekOffset:Number = 0;
+
   /** The current quality level. **/
   public var _level : int;
+  private var _hlsVariants: Vector.<VariantPlaylistInfo>;
+
 
   private var _videoWidth:Number = -1;
   private var _videoHeight:Number = -1;
@@ -55,6 +64,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
      HLSSettings.logDebug = (params['hls.debug'] != undefined);
      HLSSettings.maxBackBufferLength = (params['hls.maxBackBufferLength'] != undefined) ? params['hls.maxBackBufferLength'] : 30;
      HLSSettings.maxBufferLength = (params['hls.maxBufferLength'] != undefined) ? params['hls.maxBufferLength'] : 120;
+     HLSSettings.reportsUnreliablePTS = (params['hls.reportsUnreliablePTS'] != undefined) ? params['hls.reportsUnreliablePTS'] : HLSSettings.reportsUnreliablePTS;
 
 //        HLSSettings.logDebug = true;
       _hls = new HLS();
@@ -63,16 +73,30 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _hls.addEventListener(HLSEvent.MANIFEST_LOADED,_manifestHandler);
       _hls.addEventListener(HLSEvent.MEDIA_TIME,_mediaTimeHandler);
       _hls.addEventListener(HLSEvent.PLAYBACK_STATE,_stateHandler);
+      _hls.addEventListener(HLSEvent.LEVEL_SWITCH,_levelSwitch);
+      _hls.addEventListener(HLSEvent.FRAGMENT_LOADED,_fragmentLoaded);
       _hls.addEventListener(HLSEvent.ID3_UPDATED,_id3Handler);
       _hls.stream.soundTransform = new SoundTransform(_volume);
       _video.attachNetStream(_hls.stream);
+    }
+
+    private function _fragmentLoaded(event:HLSEvent):void {
+        var eventJson:String = "loadMetrics: " + JSON.stringify(new FragmentLoadMetrics(event.loadMetrics));
+        _element.sendEvent(HtmlMediaEvent.FRAGMENT_LOAD, eventJson);
     }
 
     private function _id3Handler(event: HLSEvent):void {
       _element.sendEvent(HtmlMediaEvent.ID3UPDATED, 'ID3Data:' + '"'+event.ID3Data+'"');
     }
 
-  private function _completeHandler(event:HLSEvent):void {
+    private function _levelSwitch(event:HLSEvent):void {
+        var eventJson:String = "currentLevel:" + event.level +
+                ",variant: " + JSON.stringify(_hlsVariants[event.level]);
+
+        _element.sendEvent(HtmlMediaEvent.LEVEL_SWITCH, eventJson);
+    }
+
+    private function _completeHandler(event:HLSEvent):void {
       _isEnded = true;
       _isPaused = false;
       sendEvent(HtmlMediaEvent.ENDED);
@@ -83,12 +107,25 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
     };
 
     private function _manifestHandler(event:HLSEvent):void {
+
+        // TODO this is wrong, actual video size can change each level switch
       _duration = event.levels[0].duration;
       _videoWidth = event.levels[0].width;
       _videoHeight = event.levels[0].height;
       _isManifestLoaded = true;
       _hls.stage = _video.stage;
-      sendEvent(HtmlMediaEvent.LOADEDMETADATA);
+
+        _hlsVariants = new <VariantPlaylistInfo>[];  // Reset
+        var hlsLevels: Vector.<Level> = event.levels;
+        for (var i:int = 0; i<hlsLevels.length; i++) {
+            _hlsVariants.push(new VariantPlaylistInfo(hlsLevels[i]));
+        }
+        var eventJson: String;
+        eventJson = "currentLevel:" + 0 +
+                ",variantList: " + JSON.stringify(_hlsVariants);
+
+        _element.sendEvent(HtmlMediaEvent.LOADEDMETADATA, eventJson);
+
       sendEvent(HtmlMediaEvent.CANPLAY);
       if(_autoplay || _playqueued) {
         _playqueued = false;
@@ -164,7 +201,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
     }
 
     public function load():void{
-      //Log.txt("HLSMediaElement:load");		
+      //Log.txt("HLSMediaElement:load");
       if(_url) {
         sendEvent(HtmlMediaEvent.LOADSTART);
         _hls.load(_url);
