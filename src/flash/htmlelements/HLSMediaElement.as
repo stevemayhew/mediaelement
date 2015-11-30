@@ -3,6 +3,7 @@
 import flash.display.Sprite;
 import flash.media.SoundTransform;
 import flash.media.Video;
+import flash.utils.describeType;
 
 import htmlelements.HLS.FragmentLoadMetrics;
 
@@ -62,9 +63,37 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       addChild(_video);
 
      HLSSettings.logDebug = (params['hls.debug'] != undefined);
-     HLSSettings.maxBackBufferLength = (params['hls.maxBackBufferLength'] != undefined) ? params['hls.maxBackBufferLength'] : 30;
-     HLSSettings.maxBufferLength = (params['hls.maxBufferLength'] != undefined) ? params['hls.maxBufferLength'] : 120;
-     HLSSettings.reportsUnreliablePTS = (params['hls.reportsUnreliablePTS'] != undefined) ? params['hls.reportsUnreliablePTS'] : HLSSettings.reportsUnreliablePTS;
+
+        var typeInf:XML =  describeType(HLSSettings);
+        var variables:XMLList = typeInf..variable;
+        for each(var variable:XML in variables) {
+            var vName:String = variable.@name;
+            var vType:String = variable.@type;
+            trace("name:" + vName + " type:" + vType);
+            if (params.hasOwnProperty('hls.' + vName)) {
+                var paramValue:String = params['hls.' + vName];
+                switch (vType) {
+                    case 'Boolean':
+                        HLSSettings[vName] = Boolean(paramValue) === 'true';
+                        break;
+                    case 'Number':
+                    case 'int':
+                    case 'uint':
+                    case 'String':
+                        HLSSettings[vName] = paramValue;
+                        break;
+
+                    default:
+                        trace('unsupported type: '+vType);
+                }
+                trace('set '+vName+' = '+HLSSettings[vName]);
+            }
+        }
+        for (var key:String in params) {
+            trace("params["+key+"] = " + params[key]);
+
+        }
+        trace(JSON.stringify(HLSSettings));
 
 //        HLSSettings.logDebug = true;
       _hls = new HLS();
@@ -82,7 +111,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
 
     private function _fragmentLoaded(event:HLSEvent):void {
         var eventJson:String = "loadMetrics: " + JSON.stringify(new FragmentLoadMetrics(event.loadMetrics));
-        _element.sendEvent(HtmlMediaEvent.FRAGMENT_LOAD, eventJson);
+        _element.sendEventNoControlsUpdate(HtmlMediaEvent.FRAGMENT_LOAD, eventJson);
     }
 
     private function _id3Handler(event: HLSEvent):void {
@@ -90,10 +119,12 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
     }
 
     private function _levelSwitch(event:HLSEvent):void {
-        var eventJson:String = "currentLevel:" + event.level +
-                ",variant: " + JSON.stringify(_hlsVariants[event.level]);
+        if (_hlsVariants) {
+            var eventJson:String = "currentLevel:" + event.level +
+                    ",variant: " + JSON.stringify(_hlsVariants[event.level]);
 
-        _element.sendEvent(HtmlMediaEvent.LEVEL_SWITCH, eventJson);
+            _element.sendEventNoControlsUpdate(HtmlMediaEvent.LEVEL_SWITCH, eventJson);
+        }
     }
 
     private function _completeHandler(event:HLSEvent):void {
@@ -120,11 +151,8 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
         for (var i:int = 0; i<hlsLevels.length; i++) {
             _hlsVariants.push(new VariantPlaylistInfo(hlsLevels[i]));
         }
-        var eventJson: String;
-        eventJson = "currentLevel:" + 0 +
-                ",variantList: " + JSON.stringify(_hlsVariants);
 
-        _element.sendEvent(HtmlMediaEvent.LOADEDMETADATA, eventJson);
+        sendEvent(HtmlMediaEvent.LOADEDMETADATA);
 
       sendEvent(HtmlMediaEvent.CANPLAY);
       if(_autoplay || _playqueued) {
