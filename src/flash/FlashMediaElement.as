@@ -1,30 +1,24 @@
 package
 {
-	import flash.display.*;
-	import flash.events.*;
-	import flash.media.*;
-	import flash.net.*;
-	import flash.text.*;
-	import flash.system.*;
+import flash.display.*;
+import flash.events.*;
+import flash.external.ExternalInterface;
+import flash.filters.DropShadowFilter;
+import flash.geom.ColorTransform;
+import flash.geom.Rectangle;
+import flash.media.Video;
+import flash.net.*;
+import flash.system.*;
+import flash.text.*;
+import flash.utils.Timer;
 
-	import flash.media.Video;
-	import flash.net.NetConnection;
-	import flash.net.NetStream;
+import htmlelements.AudioElement;
+import htmlelements.HLSMediaElement;
+import htmlelements.IMediaElement;
+import htmlelements.VideoElement;
+import htmlelements.YouTubeElement;
 
-	import flash.geom.ColorTransform;
-
-	import flash.filters.DropShadowFilter;
-	import flash.utils.Timer;
-	import flash.external.ExternalInterface;
-	import flash.geom.Rectangle;
-
-	import htmlelements.IMediaElement;
-	import htmlelements.VideoElement;
-	import htmlelements.AudioElement;
-	import htmlelements.YouTubeElement;
-	import htmlelements.HLSMediaElement;
-
-	public class FlashMediaElement extends MovieClip {
+public class FlashMediaElement extends MovieClip {
 
 		private var _mediaUrl:String;
 		private var _jsInitFunction:String;
@@ -766,7 +760,7 @@ package
 
 			_output.appendText("enterFullscreen()\n");
 
-			var screenRectangle:Rectangle = new Rectangle(0, 0, flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
+			var screenRectangle:Rectangle = new Rectangle(0, 0, Capabilities.screenResolutionX, Capabilities.screenResolutionY);
 			stage.fullScreenSourceRect = screenRectangle;
 
 			stage.displayState = StageDisplayState.FULL_SCREEN;
@@ -978,18 +972,18 @@ package
 				_video.y = 0;
 
 				if(fullscreen == true) {
-					stageRatio = flash.system.Capabilities.screenResolutionX/flash.system.Capabilities.screenResolutionY;
+					stageRatio = Capabilities.screenResolutionX/Capabilities.screenResolutionY;
 					nativeRatio = _nativeVideoWidth/_nativeVideoHeight;
 
 					// adjust size and position
 					if (nativeRatio > stageRatio) {
-						_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, _nativeVideoHeight * flash.system.Capabilities.screenResolutionX / _nativeVideoWidth);
-						_video.y = flash.system.Capabilities.screenResolutionY/2 - _video.height/2;
+						_mediaElement.setSize(Capabilities.screenResolutionX, _nativeVideoHeight * Capabilities.screenResolutionX / _nativeVideoWidth);
+						_video.y = Capabilities.screenResolutionY/2 - _video.height/2;
 					} else if (stageRatio > nativeRatio) {
-						_mediaElement.setSize(_nativeVideoWidth * flash.system.Capabilities.screenResolutionY / _nativeVideoHeight, flash.system.Capabilities.screenResolutionY);
-						_video.x = flash.system.Capabilities.screenResolutionX/2 - _video.width/2;
+						_mediaElement.setSize(_nativeVideoWidth * Capabilities.screenResolutionY / _nativeVideoHeight, Capabilities.screenResolutionY);
+						_video.x = Capabilities.screenResolutionX/2 - _video.width/2;
 					} else if (stageRatio == nativeRatio) {
-						_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
+						_mediaElement.setSize(Capabilities.screenResolutionX, Capabilities.screenResolutionY);
 					}
 
 				} else {
@@ -1011,7 +1005,7 @@ package
 
 			} else if (_mediaElement is YouTubeElement) {
 				if(fullscreen == true) {
-					_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
+					_mediaElement.setSize(Capabilities.screenResolutionX, Capabilities.screenResolutionY);
 
 				} else {
 					_mediaElement.setSize(_stageWidth, _stageHeight);
@@ -1057,35 +1051,39 @@ package
 
 			//trace((_mediaElement.duration()*1).toString() + " / " + (_mediaElement.currentTime()*1).toString());
 			//trace("CurrentProgress:"+_mediaElement.currentProgress());
+            sendEventNoControlsUpdate(eventName, eventValues);
+        }
 
-			if (ExternalInterface.objectID != null && ExternalInterface.objectID.toString() != "") {
+        // Send the event to javascript with less fanfare.
+        public function sendEventNoControlsUpdate(eventName:String, eventValues:String):void {
+            if (ExternalInterface.objectID != null && ExternalInterface.objectID.toString() != "") {
 
-				//_output.appendText("event:" + eventName + " : " + eventValues);
-				//trace("event", eventName, eventValues);
+                //_output.appendText("event:" + eventName + " : " + eventValues);
+                //trace("event", eventName, eventValues);
 
-				if (eventValues == null)
-					eventValues == "";
+                if (eventValues == null)
+                    eventValues == "";
 
-				if (_isVideo) {
-					eventValues += (eventValues != "" ? "," : "") + "isFullScreen:" + _isFullScreen;
-				}
+                if (_isVideo) {
+                    eventValues += (eventValues != "" ? "," : "") + "isFullScreen:" + _isFullScreen;
+                }
 
-				eventValues = "{" + eventValues + "}";
+                eventValues = "{" + eventValues + "}";
+                /*
+                                  OLD DIRECT METHOD
+                                  ExternalInterface.call(
+                                  "function(id, name) { mejs.MediaPluginBridge.fireEvent(id,name," + eventValues + "); }",
+                                  ExternalInterface.objectID,
+                                  eventName);
+                                  */
+                // use set timeout for performance reasons
 
-				/*
-				OLD DIRECT METHOD
-				ExternalInterface.call(
-					"function(id, name) { mejs.MediaPluginBridge.fireEvent(id,name," + eventValues + "); }",
-					ExternalInterface.objectID,
-					eventName);
-				*/
-
-				// use set timeout for performance reasons
-				//if (!_alwaysShowControls) {
-					ExternalInterface.call("setTimeout", _jsCallbackFunction + "('" + ExternalInterface.objectID + "','" + eventName + "'," + eventValues + ")",0);
-				//}
-			}
-		}
+                //if (!_alwaysShowControls) {
+                ExternalInterface.call("setTimeout",
+                        _jsCallbackFunction + "('" + ExternalInterface.objectID + "','" + eventName + "'," + eventValues + ")", 0);
+                //}
+            }
+        }
 
 
 		private function updateControls(eventName:String):void {
