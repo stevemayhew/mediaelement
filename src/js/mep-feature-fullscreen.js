@@ -93,16 +93,12 @@
 						// allows clicking through the fullscreen button and controls down directly to Flash
 
 						/*
-						 When a user puts his mouse over the fullscreen button, the controls are disabled
-						 So we put a div over the video and another one on iether side of the fullscreen button
-						 that caputre mouse movement
-						 and restore the controls once the mouse moves outside of the fullscreen button
+						 Restore the controls once the mouse moves outside of the fullscreen button
 						*/
 
 						var fullscreenIsDisabled = false,
 							restoreControls = function() {
 								if (fullscreenIsDisabled) {
-									
 									// restore the control bar
 									fullscreenBtn.css('pointer-events', '');
 									t.controls.css('pointer-events', '');
@@ -114,15 +110,7 @@
 									fullscreenIsDisabled = false;
 								}
 							},
-							i, len,
-							positionHoverDivs = function() {
-								var fullScreenBtnOffsetLeft = fullscreenBtn.offset().left - t.container.offset().left,
-									fullScreenBtnOffsetTop = fullscreenBtn.offset().top - t.container.offset().top,
-									fullScreenBtnWidth = fullscreenBtn.outerWidth(true),
-									fullScreenBtnHeight = fullscreenBtn.outerHeight(true),
-									containerWidth = t.container.width(),
-									containerHeight = t.container.height();
-							};
+							i, len;
 
 						// on hover, kill the fullscreen button's HTML handling, allowing clicks down to Flash
 						fullscreenBtn.on('mouseover',function() {
@@ -141,8 +129,6 @@
 
 								// restore click-to-play
 								t.media.addEventListener('click', t.clickToPlayPauseCallback);
-
-								positionHoverDivs();
 
 								fullscreenIsDisabled = true;
 							}
