@@ -39,9 +39,9 @@ To build on Mac, follow the first set of steps then do this:
 (This meant that you shouldn't need to update anything in Gruntfile.js)
 * Build the flash file as Superuser: sudo grunt shell:buildFlash
 
-This last step is for all platforms:  
-* Run 'grunt --features=playpause,volume,skipback,progress,current,jumpforward,tracks,fullscreen' 
-
+These next last steps are for all platforms:
+* Run 'grunt --features=playpause,volume,skipback,progress,current,jumpforward,closedcaption,fullscreen'
+* Copy output files from local-build to the destination folder.
 
 ## Change Log
 
