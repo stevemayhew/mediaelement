@@ -49,7 +49,9 @@ import org.osmf.net.StreamingURLResource;
 import org.osmf.traits.MediaTraitBase;
 import org.osmf.traits.MediaTraitType;
 
-	public class FlashMediaElement extends MovieClip {
+import mediaelements.IMediaPlayer;
+
+	public class FlashMediaElement extends MovieClip implements IMediaPlayer {
 
 		private var _mediaUrl:String;
 		private var _jsInitFunction:String;
@@ -130,6 +132,8 @@ import org.osmf.traits.MediaTraitType;
 	private var _mediaPlayer:MediaPlayer;
 	private var _mediaContainer:MediaContainer;
 	private var _osmfccDecoder:OSMFCCDecoder;
+	// TODO: Default this to false when we have a functioning button to toggle it.
+	private var _showClosedCaptions:Boolean = false;
 
 	// Code taken zipfile on http://www.adobe.com/devnet/flash/articles/mastering-osmf-pt3.html
 	// Zip is http://download.macromedia.com/pub/developer/flash/mastering-osmf-pt3.zip
@@ -227,7 +231,7 @@ import org.osmf.traits.MediaTraitType;
 		// that can be used to render.
 		_osmfccDecoder.mediaContainer = _mediaContainer;
 		// Enable the instance
-		_osmfccDecoder.enabled = true;
+		_osmfccDecoder.enabled = _showClosedCaptions;
 		// Optionally, select a type and service
 		// At present, only one type is supported; CEA-708 wrapped over 608,
 		// which is identified by the value CCType.CEA708.
@@ -970,6 +974,10 @@ import org.osmf.traits.MediaTraitType;
 			}
 		}
 
+		public function playVideo():void {
+			playMedia();
+		}
+
 		public function loadMedia():void {
 			_output.appendText("load\n");
 //			_mediaElement.load();
@@ -984,6 +992,10 @@ import org.osmf.traits.MediaTraitType;
 			}
 		}
 
+		public function pauseVideo():void {
+			pauseMedia();
+		}
+
 		public function setSrc(url:String):void {
 			_output.appendText("setSrc: " + url + "\n");
 //			_mediaElement.setSrc(url);
@@ -994,11 +1006,19 @@ import org.osmf.traits.MediaTraitType;
 			_mediaPlayer.stop();
 		}
 
+		public function stopVideo():void {
+			stopMedia();
+		}
+
 		public function setCurrentTime(time:Number):void {
 			_output.appendText("seek: " + time.toString() + "\n");
 			if (_mediaPlayer.canSeekTo(time)) {
 				_mediaPlayer.seek(time);
 			}
+		}
+
+		public function seekTo(time:Number):void {
+			setCurrentTime(time);
 		}
 
 		public function setVolume(volume:Number):void {
@@ -1011,6 +1031,21 @@ import org.osmf.traits.MediaTraitType;
 			_output.appendText("muted: " + muted.toString() + "\n");
 			_mediaPlayer.muted = (muted);
 			toggleVolumeIcons(_mediaPlayer.volume);
+		}
+
+		public function mute():void {
+			setMuted(true);
+		}
+
+		public function unMute():void {
+			setMuted(false);
+		}
+
+		public function showCaptions(show:Boolean):void {
+			_showClosedCaptions = show;
+			if (_osmfccDecoder != null) {
+				_osmfccDecoder.enabled = _showClosedCaptions;
+			}
 		}
 
 		public function setVideoSize(width:Number, height:Number):void {
