@@ -43,21 +43,22 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
   private var _videoHeight:Number = -1;
 
 
-    public function HLSMediaElement(element:FlashMediaElement, autoplay:Boolean, preload:String, timerRate:Number, startVolume:Number, params:Object)
+    public function HLSMediaElement(element:FlashMediaElement, hls:HLS, autoplay:Boolean, preload:String, timerRate:Number, startVolume:Number, params:Object)
     {
       _element = element;
       _autoplay = autoplay;
       _volume = startVolume;
       _preload = preload;
-      _video = new Video();
-      addChild(_video);
+//      _video = new Video();
+//      addChild(_video);
 
      HLSSettings.logDebug = (params['hls.debug'] != undefined);
      HLSSettings.maxBackBufferLength = (params['hls.maxBackBufferLength'] != undefined) ? params['hls.maxBackBufferLength'] : 30;
      HLSSettings.maxBufferLength = (params['hls.maxBufferLength'] != undefined) ? params['hls.maxBufferLength'] : 120;
 
 //        HLSSettings.logDebug = true;
-      _hls = new HLS();
+//      _hls = new HLS();
+      _hls = hls;
       _hls.addEventListener(HLSEvent.PLAYBACK_COMPLETE,_completeHandler);
       _hls.addEventListener(HLSEvent.ERROR,_errorHandler);
       _hls.addEventListener(HLSEvent.MANIFEST_LOADED,_manifestHandler);
@@ -65,7 +66,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _hls.addEventListener(HLSEvent.PLAYBACK_STATE,_stateHandler);
       _hls.addEventListener(HLSEvent.ID3_UPDATED,_id3Handler);
       _hls.stream.soundTransform = new SoundTransform(_volume);
-      _video.attachNetStream(_hls.stream);
+//      _video.attachNetStream(_hls.stream);
     }
 
     private function _id3Handler(event: HLSEvent):void {
@@ -87,7 +88,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _videoWidth = event.levels[0].width;
       _videoHeight = event.levels[0].height;
       _isManifestLoaded = true;
-      _hls.stage = _video.stage;
+//      _hls.stage = _video.stage;
       sendEvent(HtmlMediaEvent.LOADEDMETADATA);
       sendEvent(HtmlMediaEvent.CANPLAY);
       if(_autoplay || _playqueued) {
@@ -117,7 +118,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
           case HLSPlayStates.PLAYING:
             _isPaused = false;
             _isEnded = false;
-            _video.visible = true;
+//            _video.visible = true;
             sendEvent(HtmlMediaEvent.LOADEDDATA);
             sendEvent(HtmlMediaEvent.PLAY);
             sendEvent(HtmlMediaEvent.PLAYING);
@@ -173,7 +174,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
 
     public function stop():void{
       _hls.stream.close();
-      _video.clear();
+//      _video.clear();
       _isManifestLoaded = false;
       _duration = 0;
       _position = 0;
@@ -189,8 +190,8 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
     }
 
     public function setSize(width:Number, height:Number):void{
-    _video.width = width;
-    _video.height = height;
+//    _video.width = width;
+//    _video.height = height;
     }
 
     public function setCurrentTime(pos:Number):void{

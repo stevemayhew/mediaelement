@@ -1,5 +1,9 @@
 package
 {
+import com.adobe.cc.CCType;
+import com.adobe.cc.CEA708Service;
+import com.adobe.cc.OSMFCCDecoder;
+
 	import flash.display.*;
 	import flash.events.*;
 	import flash.media.*;
@@ -17,12 +21,33 @@ package
 	import flash.utils.Timer;
 	import flash.external.ExternalInterface;
 	import flash.geom.Rectangle;
+import flash.utils.getDefinitionByName;
 
 	import htmlelements.IMediaElement;
 	import htmlelements.VideoElement;
 	import htmlelements.AudioElement;
 	import htmlelements.YouTubeElement;
 	import htmlelements.HLSMediaElement;
+
+import org.mangui.hls.HLS;
+
+import org.osmf.containers.MediaContainer;
+
+import org.osmf.events.MediaFactoryEvent;
+import org.osmf.events.MediaPlayerStateChangeEvent;
+
+import org.osmf.media.DefaultMediaFactory;
+import org.osmf.media.MediaElement;
+
+import org.osmf.media.MediaFactory;
+import org.osmf.media.MediaPlayer;
+import org.osmf.media.MediaPlayerState;
+import org.osmf.media.MediaResourceBase;
+import org.osmf.media.PluginInfoResource;
+import org.osmf.media.URLResource;
+import org.osmf.net.StreamingURLResource;
+import org.osmf.traits.MediaTraitBase;
+import org.osmf.traits.MediaTraitType;
 
 	public class FlashMediaElement extends MovieClip {
 
@@ -99,6 +124,125 @@ package
 		private var securityIssue:Boolean = false; // When SWF parameters contain illegal characters
 		private var directAccess:Boolean = false; // When SWF visited directly with no parameters (or when security issue detected)
 
+	private var params:Object;
+
+	private var _mediaFactory:MediaFactory;
+	private var _mediaPlayer:MediaPlayer;
+	private var _mediaContainer:MediaContainer;
+	private var _osmfccDecoder:OSMFCCDecoder;
+
+	// Code taken zipfile on http://www.adobe.com/devnet/flash/articles/mastering-osmf-pt3.html
+	// Zip is http://download.macromedia.com/pub/developer/flash/mastering-osmf-pt3.zip
+	// Pointed to from https://github.com/mangui/flashls/issues/179, but couldn't get the code from that page to work.
+	protected function initPlayer():void
+	{
+		// Create a mediafactory instance
+		_mediaFactory = new DefaultMediaFactory();
+
+		//Marker 1: Add the listeners for the plugin load call
+		_mediaFactory.addEventListener( MediaFactoryEvent.PLUGIN_LOAD, onPluginLoaded );
+		_mediaFactory.addEventListener( MediaFactoryEvent.PLUGIN_LOAD_ERROR, onPluginLoadFailed );
+
+		//the simplified api controller for media
+		_mediaPlayer = new MediaPlayer();
+		_mediaPlayer.autoPlay = false;
+
+		//the container (sprite) for managing display and layout
+		_mediaContainer = new MediaContainer();
+
+		//Adds the container to the stage
+		this.addChild( _mediaContainer );
+
+		//Marker 2: Load the plugin
+		loadPlugin( "org.mangui.osmf.plugins.HLSPlugin" );
+	}
+
+	private function loadPlugin( source:String ):void
+	{
+		//Marker 3: Create the plugin resource using a static plugin
+		var pluginResource:MediaResourceBase;
+		var pluginInfoClass:Class = getDefinitionByName( source ) as Class;
+		pluginResource = new PluginInfoResource( new pluginInfoClass() );
+
+
+		//Marker 4: Load the plugin
+		_mediaFactory.loadPlugin( pluginResource );
+	}
+
+	protected function onPluginLoaded( event:MediaFactoryEvent ):void
+	{
+		trace( "onPluginLoaded()" );
+
+		//Marker 5: Load the media
+		launchMedia();
+	}
+
+	protected function onPluginLoadFailed( event:MediaFactoryEvent ):void
+	{
+		trace( "onPluginFailedLoad()" );
+	}
+
+	protected function removeMediaFactoryEventListeners():void
+	{
+		_mediaFactory.removeEventListener( MediaFactoryEvent.PLUGIN_LOAD, onPluginLoaded );
+		_mediaFactory.removeEventListener( MediaFactoryEvent.PLUGIN_LOAD_ERROR, onPluginLoadFailed );
+	}
+
+	protected function launchMedia():void
+	{
+		//Marker 6: The pointer to the media
+		var resource:URLResource = new StreamingURLResource( _mediaUrl );
+		var element:MediaElement = _mediaFactory.createMediaElement( resource );
+
+		_mediaPlayer.addEventListener(MediaPlayerStateChangeEvent.MEDIA_PLAYER_STATE_CHANGE, function(event:MediaPlayerStateChangeEvent) : void {
+			if (event.state == MediaPlayerState.READY) {
+				if (_osmfccDecoder == null) {
+					onPlayerReady(event);
+				}
+			}
+		});
+
+		// Add the media element
+		_mediaPlayer.media = element;
+		_mediaContainer.addMediaElement( element );
+		_mediaContainer.width = _stageWidth;
+		_mediaContainer.height = _stageHeight;
+	}
+
+	// Code taken from https://helpx.adobe.com/adobe-media-server/dev/configure-closed-captioning.html
+	private function onPlayerReady( event:MediaPlayerStateChangeEvent ):void
+	{
+		trace("onPlayerReady()");
+		// Initialize the player.
+		// Listen for MediaPlayerStateChangeEvent on player and
+		// when the state is MediaPlayerState.READY, then initialize the
+		// decoder as shown below:
+
+		// Create a new instance
+		_osmfccDecoder = new OSMFCCDecoder();
+		// Bind the instance to your media player
+
+		_osmfccDecoder.mediaPlayer = _mediaPlayer;
+		// Bind the instance to the media player view area
+		// that can be used to render.
+		_osmfccDecoder.mediaContainer = _mediaContainer;
+		// Enable the instance
+		_osmfccDecoder.enabled = true;
+		// Optionally, select a type and service
+		// At present, only one type is supported; CEA-708 wrapped over 608,
+		// which is identified by the value CCType.CEA708.
+		_osmfccDecoder.type = CCType.CEA708;
+		_osmfccDecoder.service = CEA708Service.CC1;
+
+		if (_autoplay) {
+			this.playMedia();
+		}
+
+		// create media element
+		var loadTrait:MediaTraitBase = _mediaPlayer.media.getTrait(MediaTraitType.LOAD);
+		var hls:HLS = loadTrait.hls;
+		_mediaElement = new HLSMediaElement(this, hls, _autoplay, _preload, _timerRate, _startVolume, params);
+	}
 
 		public function FlashMediaElement() {
 			// check for security issues (borrowed from jPLayer)
@@ -133,7 +277,7 @@ package
 
 			// get parameters
 			// Use only FlashVars, ignore QueryString
-			var params:Object, pos:int, query:Object;
+			var pos:int, query:Object;
 
 			params = LoaderInfo(this.root.loaderInfo).parameters;
 			pos = root.loaderInfo.url.indexOf('?');
@@ -213,49 +357,7 @@ package
 			_fullscreenButton.x = stage.stageWidth - _fullscreenButton.width;
 			_fullscreenButton.y = stage.stageHeight - _fullscreenButton.height;
 
-
-			// create media element
-			if (_isVideo) {
-				if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.m3u8(\?.*)?/i) !== -1) {
-
-					_mediaElement = new HLSMediaElement(this, _autoplay, _preload, _timerRate, _startVolume, params);
-					_video = (_mediaElement as HLSMediaElement).video;
-					_video.width = _stageWidth;
-					_video.height = _stageHeight;
-					(_video as Video).smoothing = _enableSmoothing;
-					addChild(_video);
-
-
-				} else if (_mediaUrl.indexOf("youtube.com") > -1 || _mediaUrl.indexOf("youtu.be") > -1) {
-
-					//Security.allowDomain("http://www.youtube.com");
-
-					_mediaElement = new YouTubeElement(this, _autoplay, _preload, _timerRate, _startVolume);
-					_video = (_mediaElement as YouTubeElement).player;
-
-					// these are set and then used once the player is loaded
-					(_mediaElement as YouTubeElement).initWidth = _stageWidth;
-					(_mediaElement as YouTubeElement).initHeight = _stageHeight;
-
-				} else {
-
-					_mediaElement = new VideoElement(this, _autoplay, _preload, _timerRate, _startVolume, _streamer);
-					_video = (_mediaElement as VideoElement).video;
-					_video.width = _stageWidth;
-					_video.height = _stageHeight;
-					(_video as Video).smoothing = _enableSmoothing;
-					(_mediaElement as VideoElement).setReference(this);
-					(_mediaElement as VideoElement).setPseudoStreaming(_enablePseudoStreaming);
-					(_mediaElement as VideoElement).setPseudoStreamingStartParam(_pseudoStreamingStartQueryParam);
-					//_video.scaleMode = VideoScaleMode.MAINTAIN_ASPECT_RATIO;
-					addChild(_video);
-				}
-			} else {
-
-				//var player2:AudioDecoder = new com.automatastudios.audio.audiodecoder.AudioDecoder();
-				_mediaElement = new AudioElement(this, _autoplay, _preload, _timerRate, _startVolume);
-			}
-
+			initPlayer();
 
 			// controls!
 			_controlBar = _mediaElementDisplay.getChildByName("controls_mc") as MovieClip;
@@ -288,11 +390,11 @@ package
 
 			_playButton = _controlBar.getChildByName("play_btn") as SimpleButton;
 			_playButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
-				_mediaElement.play();
+				_mediaPlayer.play();
 			});
 			_pauseButton = _controlBar.getChildByName("pause_btn") as SimpleButton;
 			_pauseButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
-				_mediaElement.pause();
+				_mediaPlayer.pause();
 			});
 
             var loader:Loader = new Loader();
@@ -309,16 +411,16 @@ package
             _controlBar.addChildAt(_backButton, playIndex);
 
             _backButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
-                _output.appendText("_backButton click: " + _mediaElement.currentTime() + "\n");
+				_output.appendText("_backButton click: " + _mediaPlayer.currentTime + "\n");
 
-                _mediaElement.setCurrentTime(Math.max(_mediaElement.currentTime() - 8, 0));
+                _mediaPlayer.currentTime = Math.max(_mediaPlayer.currentTime - 8, 0);
             });
 
             _controlBar.addChildAt(_forwardButton, playIndex);
             _forwardButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
 
-                _output.appendText("_forwardButton click: " + _mediaElement.currentTime() + "\n");
-                _mediaElement.setCurrentTime(Math.min(_mediaElement.currentTime() + 30, _mediaElement.seekLimit()));
+				_output.appendText("_forwardButton click: " + _mediaPlayer.currentTime + "\n");
+                _mediaPlayer.currentTime = Math.min(_mediaPlayer.currentTime + 30, _mediaPlayer.duration);
             });
 
 
@@ -377,9 +479,9 @@ package
 			_output.appendText("ExternalInterface.available: " + ExternalInterface.available.toString() + "\n");
 			_output.appendText("ExternalInterface.objectID: " + ((ExternalInterface.objectID != null)? ExternalInterface.objectID.toString() : "null") + "\n");
 
-			if (_mediaUrl != "") {
-				_mediaElement.setSrc(_mediaUrl);
-			}
+//			if (_mediaUrl != "") {
+//				_mediaElement.setSrc(_mediaUrl);
+//			}
 
 			positionControls();
 
@@ -426,14 +528,14 @@ package
 			}
 
 			if (_preload != "none") {
-				_mediaElement.load();
+//				_mediaElement.load();
 
 				if (_autoplay) {
-					_mediaElement.play();
+//					_mediaElement.play();
 				}
 			} else if (_autoplay) {
-				_mediaElement.load();
-				_mediaElement.play();
+//				_mediaElement.load();
+//				_mediaElement.play();
 			}
 
 			// listen for resize
@@ -566,8 +668,8 @@ package
 
 			//if (_alwaysShowControls) {
 				if (_hoverTime.visible) {
-					var seekBarPosition:Number =  ((event.localX / _scrubTrack.width) *_mediaElement.duration())*_scrubTrack.scaleX;
-					var hoverPos:Number = (seekBarPosition / _mediaElement.duration()) *_scrubTrack.scaleX;
+					var seekBarPosition:Number =  ((event.localX / _scrubTrack.width) *_mediaPlayer.duration)*_scrubTrack.scaleX;
+					var hoverPos:Number = (seekBarPosition / _mediaPlayer.duration) *_scrubTrack.scaleX;
 
 					if (_isFullScreen) {
 						_hoverTime.x=event.target.parent.mouseX;
@@ -596,12 +698,14 @@ package
 
 		private function scrubClick(event:MouseEvent):void {
 			//trace(event);
-			var seekBarPosition:Number = ((event.localX / _scrubTrack.width) * _mediaElement.duration()) * _scrubTrack.scaleX;
+			var seekBarPosition:Number = ((event.localX / _scrubTrack.width) * _mediaPlayer.duration) * _scrubTrack.scaleX;
 
-			var canSeekToPosition:Boolean = isNaN(_mediaElement.seekLimit()) ||  ( seekBarPosition <= _mediaElement.duration() && seekBarPosition >= 0 );
+			var canSeekToPosition:Boolean = isNaN(_mediaPlayer.duration) ||  ( seekBarPosition <= _mediaPlayer.duration && seekBarPosition >= 0 );
 
 			if (canSeekToPosition) {
-					_mediaElement.setCurrentTime(seekBarPosition);
+				if (_mediaPlayer.canSeekTo(seekBarPosition)) {
+					_mediaPlayer.seek(seekBarPosition);
+				}
 			}
 		}
 
@@ -859,44 +963,54 @@ package
 		// START: external interface
 		public function playMedia():void {
 			_output.appendText("play\n");
-			_mediaElement.play();
+			if (_mediaPlayer.canPlay) {
+				_mediaPlayer.play();
+			} else {
+				_autoplay = true;
+			}
 		}
 
 		public function loadMedia():void {
 			_output.appendText("load\n");
-			_mediaElement.load();
+//			_mediaElement.load();
 		}
 
 		public function pauseMedia():void {
 			_output.appendText("pause\n");
-			_mediaElement.pause();
+			if (_mediaPlayer.canPause) {
+				_mediaPlayer.pause();
+			} else {
+				_autoplay = false;
+			}
 		}
 
 		public function setSrc(url:String):void {
 			_output.appendText("setSrc: " + url + "\n");
-			_mediaElement.setSrc(url);
+//			_mediaElement.setSrc(url);
 		}
 
 		public function stopMedia():void {
 			_output.appendText("stop\n");
-			_mediaElement.stop();
+			_mediaPlayer.stop();
 		}
 
 		public function setCurrentTime(time:Number):void {
 			_output.appendText("seek: " + time.toString() + "\n");
-			_mediaElement.setCurrentTime(time);
+			if (_mediaPlayer.canSeekTo(time)) {
+				_mediaPlayer.seek(time);
+			}
 		}
 
 		public function setVolume(volume:Number):void {
 			_output.appendText("volume: " + volume.toString() + "\n");
-			_mediaElement.setVolume(volume);
+			_mediaPlayer.volume = (volume);
 			toggleVolumeIcons(volume);
 		}
 
 		public function setMuted(muted:Boolean):void {
 			_output.appendText("muted: " + muted.toString() + "\n");
-			_mediaElement.setMuted(muted);
-			toggleVolumeIcons(_mediaElement.getVolume());
+			_mediaPlayer.muted = (muted);
+			toggleVolumeIcons(_mediaPlayer.volume);
 		}
 
 		public function setVideoSize(width:Number, height:Number):void {
@@ -964,61 +1078,61 @@ package
 
 			_output.appendText("positioning video "+stage.displayState+"\n");
 
-			if (_mediaElement is VideoElement || _mediaElement is HLSMediaElement) {
-
-				if (isNaN(_nativeVideoWidth) || isNaN(_nativeVideoHeight) || _nativeVideoWidth <= 0 || _nativeVideoHeight <= 0) {
-					_output.appendText("ERR: I dont' have the native dimension\n");
-					return;
-				}
-
-				// calculate ratios
-				var stageRatio:Number, nativeRatio:Number;
-
-				_video.x = 0;
-				_video.y = 0;
-
-				if(fullscreen == true) {
-					stageRatio = flash.system.Capabilities.screenResolutionX/flash.system.Capabilities.screenResolutionY;
-					nativeRatio = _nativeVideoWidth/_nativeVideoHeight;
-
-					// adjust size and position
-					if (nativeRatio > stageRatio) {
-						_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, _nativeVideoHeight * flash.system.Capabilities.screenResolutionX / _nativeVideoWidth);
-						_video.y = flash.system.Capabilities.screenResolutionY/2 - _video.height/2;
-					} else if (stageRatio > nativeRatio) {
-						_mediaElement.setSize(_nativeVideoWidth * flash.system.Capabilities.screenResolutionY / _nativeVideoHeight, flash.system.Capabilities.screenResolutionY);
-						_video.x = flash.system.Capabilities.screenResolutionX/2 - _video.width/2;
-					} else if (stageRatio == nativeRatio) {
-						_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
-					}
-
-				} else {
-					stageRatio = _stageWidth/_stageHeight;
-					nativeRatio = _nativeVideoWidth/_nativeVideoHeight;
-
-					// adjust size and position
-					if (nativeRatio > stageRatio) {
-						_mediaElement.setSize(_stageWidth, _nativeVideoHeight * _stageWidth / _nativeVideoWidth);
-						_video.y = _stageHeight/2 - _video.height/2;
-					} else if (stageRatio > nativeRatio) {
-						_mediaElement.setSize( _nativeVideoWidth * _stageHeight / _nativeVideoHeight, _stageHeight);
-						_video.x = _stageWidth/2 - _video.width/2;
-					} else if (stageRatio == nativeRatio) {
-						_mediaElement.setSize(_stageWidth, _stageHeight);
-					}
-
-				}
-
-			} else if (_mediaElement is YouTubeElement) {
-				if(fullscreen == true) {
-					_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
-
-				} else {
-					_mediaElement.setSize(_stageWidth, _stageHeight);
-
-				}
-
-			}
+//			if (_mediaElement is VideoElement || _mediaElement is HLSMediaElement) {
+//
+//				if (isNaN(_nativeVideoWidth) || isNaN(_nativeVideoHeight) || _nativeVideoWidth <= 0 || _nativeVideoHeight <= 0) {
+//					_output.appendText("ERR: I dont' have the native dimension\n");
+//					return;
+//				}
+//
+//				// calculate ratios
+//				var stageRatio:Number, nativeRatio:Number;
+//
+//				_video.x = 0;
+//				_video.y = 0;
+//
+//				if(fullscreen == true) {
+//					stageRatio = flash.system.Capabilities.screenResolutionX/flash.system.Capabilities.screenResolutionY;
+//					nativeRatio = _nativeVideoWidth/_nativeVideoHeight;
+//
+//					// adjust size and position
+//					if (nativeRatio > stageRatio) {
+//						_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, _nativeVideoHeight * flash.system.Capabilities.screenResolutionX / _nativeVideoWidth);
+//						_video.y = flash.system.Capabilities.screenResolutionY/2 - _video.height/2;
+//					} else if (stageRatio > nativeRatio) {
+//						_mediaElement.setSize(_nativeVideoWidth * flash.system.Capabilities.screenResolutionY / _nativeVideoHeight, flash.system.Capabilities.screenResolutionY);
+//						_video.x = flash.system.Capabilities.screenResolutionX/2 - _video.width/2;
+//					} else if (stageRatio == nativeRatio) {
+//						_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
+//					}
+//
+//				} else {
+//					stageRatio = _stageWidth/_stageHeight;
+//					nativeRatio = _nativeVideoWidth/_nativeVideoHeight;
+//
+//					// adjust size and position
+//					if (nativeRatio > stageRatio) {
+//						_mediaElement.setSize(_stageWidth, _nativeVideoHeight * _stageWidth / _nativeVideoWidth);
+//						_video.y = _stageHeight/2 - _video.height/2;
+//					} else if (stageRatio > nativeRatio) {
+//						_mediaElement.setSize( _nativeVideoWidth * _stageHeight / _nativeVideoHeight, _stageHeight);
+//						_video.x = _stageWidth/2 - _video.width/2;
+//					} else if (stageRatio == nativeRatio) {
+//						_mediaElement.setSize(_stageWidth, _stageHeight);
+//					}
+//
+//				}
+//
+//			} else if (_mediaElement is YouTubeElement) {
+//				if(fullscreen == true) {
+//					_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
+//
+//				} else {
+//					_mediaElement.setSize(_stageWidth, _stageHeight);
+//
+//				}
+//
+//			}
 
 			positionControls();
 		}
@@ -1032,13 +1146,8 @@ package
 				_output.appendText("METADATA RECEIVED: ");
 
 				try {
-					if (_mediaElement is VideoElement) {
-						_nativeVideoWidth = (_mediaElement as VideoElement).videoWidth;
-						_nativeVideoHeight = (_mediaElement as VideoElement).videoHeight;
-					} else if(_mediaElement is HLSMediaElement) {
-						_nativeVideoWidth = (_mediaElement as HLSMediaElement).videoWidth;
-						_nativeVideoHeight = (_mediaElement as HLSMediaElement).videoHeight;
-					}
+					_nativeVideoWidth = _mediaPlayer.mediaWidth;
+					_nativeVideoHeight = _mediaPlayer.mediaHeight;
 				} catch (e:Error) {
 					_output.appendText(e.toString() + "\n");
 				}
@@ -1113,14 +1222,14 @@ package
 					eventName == HtmlMediaEvent.FULLSCREENCHANGE) {
 
 					//_duration.text = (_mediaElement.duration()*1).toString();
-					_duration.text =  secondsToTimeCode(_mediaElement.duration());
+					_duration.text =  secondsToTimeCode(_mediaPlayer.duration);
 					//_currentTime.text = (_mediaElement.currentTime()*1).toString();
-					_currentTime.text =  secondsToTimeCode(_mediaElement.currentTime());
+					_currentTime.text =  secondsToTimeCode(_mediaPlayer.currentTime);
 
-					var pct:Number =  (_mediaElement.currentTime() / _mediaElement.duration()) *_scrubTrack.scaleX;
+					var pct:Number =  (_mediaPlayer.currentTime / _mediaPlayer.duration) *_scrubTrack.scaleX;
 
 					_scrubBar.scaleX = pct;
-					_scrubLoaded.scaleX = (_mediaElement.currentProgress()*_scrubTrack.scaleX)/100;
+					_scrubLoaded.scaleX = (currentProgress()*_scrubTrack.scaleX)/100;
 				}
 			} catch (error:Error) {
 				trace("error: " + error.toString());
@@ -1128,6 +1237,14 @@ package
 			}
 
 		}
+
+	private function currentProgress() : Number {
+		var progress:Number = 0;
+		if (_mediaPlayer.duration != 0) {
+			progress = Math.round( (_mediaPlayer.bufferLength / _mediaPlayer.duration) * 100 );
+		}
+		return progress;
+	}
 
 		// START: utility
 		private function secondsToTimeCode(seconds:Number):String {
