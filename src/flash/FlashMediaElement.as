@@ -32,6 +32,7 @@ import flash.utils.getDefinitionByName;
 import org.mangui.hls.HLS;
 
 import org.osmf.containers.MediaContainer;
+import org.osmf.events.AudioEvent;
 
 import org.osmf.events.MediaFactoryEvent;
 import org.osmf.events.MediaPlayerStateChangeEvent;
@@ -206,12 +207,40 @@ import mediaelements.IMediaPlayer;
 			}
 		});
 
+
+        // Listen for the Audio events and reflect these up to the volumechange event for
+        // MediaController (http://dev.w3.org/html5/spec-preview/media-elements.html#event-mediacontroller-volumechange)
+        // MediaController itself is spec'd to have 'volume' and 'muted' properties, the JavaScript MediaElement
+        // shiv (me-mediaelements.js, PluginMediaElement) keeps track of the current state of these properties.
+        _mediaPlayer.addEventListener(AudioEvent.VOLUME_CHANGE, _mediaVolumeChangeHandler);
+        _mediaPlayer.addEventListener(AudioEvent.MUTED_CHANGE, _mediaMuteChangeHandler);
+
 		// Add the media element
 		_mediaPlayer.media = element;
 		_mediaContainer.addMediaElement( element );
 		_mediaContainer.width = _stageWidth;
 		_mediaContainer.height = _stageHeight;
 	}
+
+
+        private function _mediaVolumeChangeHandler(event:AudioEvent):void {
+            trace("AudioEvent: " + event.toString() + " muted:"+event.muted+" volume: "+event.volume);
+
+            // Volume change has both muted and volume, muted is always false in this case.
+            var eventValues:String = "muted:" + event.muted + ",volume:" + event.volume;
+
+            this.sendEvent(HtmlMediaEvent.VOLUMECHANGE, eventValues);
+
+        }
+
+        private function _mediaMuteChangeHandler(event:AudioEvent):void {
+            trace("AudioEvent: " + event.toString() + " muted:"+event.muted+" volume: "+ _mediaPlayer.volume);
+
+            // Mute change has only muted state, current volume we can get from property.
+            var eventValues:String = "muted:" + event.muted + ",volume:" + _mediaPlayer.volume;
+
+            this.sendEvent(HtmlMediaEvent.VOLUMECHANGE, eventValues);
+        }
 
 	// Code taken from https://helpx.adobe.com/adobe-media-server/dev/configure-closed-captioning.html
 	private function onPlayerReady( event:MediaPlayerStateChangeEvent ):void
@@ -1027,7 +1056,7 @@ import mediaelements.IMediaPlayer;
 
 		public function setMuted(muted:Boolean):void {
 			_output.appendText("muted: " + muted.toString() + "\n");
-			_mediaPlayer.muted = (muted);
+            _mediaPlayer.muted = (muted);
 			toggleVolumeIcons(_mediaPlayer.volume);
 		}
 

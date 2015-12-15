@@ -35,7 +35,6 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
   private var _isPaused:Boolean = true;
   private var _isEnded:Boolean = false;
   private var _volume:Number = 1;
-  private var _isMuted:Boolean = false;
 
   private var _bytesLoaded:Number = 0;
   private var _bytesTotal:Number = 0;
@@ -267,34 +266,12 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
     }
 
     public function setVolume(vol:Number):void{
-      _volume = vol;
-      _isMuted = (_volume == 0);
-      _hls.stream.soundTransform = new SoundTransform(vol);
-      sendEvent(HtmlMediaEvent.VOLUMECHANGE);
     }
 
     public function getVolume():Number {
-      if(_isMuted) {
-        return 0;
-      } else {
-        return _volume;
-      }
     }
 
     public function setMuted(muted:Boolean):void {
-
-      // ignore if no change
-      if (muted === _isMuted)
-        return;
-
-      _isMuted = muted;
-
-      if (muted) {
-        _hls.stream.soundTransform = new SoundTransform(0);
-        sendEvent(HtmlMediaEvent.VOLUMECHANGE);
-      } else {
-        setVolume(_volume);
-      }
     }
 
     public function duration():Number{
@@ -325,7 +302,6 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
         ",framerate:" + _hls.stream.currentFPS +
         ",currentTime:" + _position +
         ",qualityLevel:" + _level +
-        ",muted:" + _isMuted +
         ",paused:" + _isPaused +
         ",ended:" + _isEnded +
         ",volume:" + _volume +
