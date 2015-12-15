@@ -132,8 +132,7 @@ import mediaelements.IMediaPlayer;
 	private var _mediaPlayer:MediaPlayer;
 	private var _mediaContainer:MediaContainer;
 	private var _osmfccDecoder:OSMFCCDecoder;
-	// TODO: Default this to false when we have a functioning button to toggle it.
-	private var _showClosedCaptions:Boolean = true;
+	private var _showClosedCaptions:Boolean = false;
 
 	// Code taken zipfile on http://www.adobe.com/devnet/flash/articles/mastering-osmf-pt3.html
 	// Zip is http://download.macromedia.com/pub/developer/flash/mastering-osmf-pt3.zip
@@ -244,7 +243,8 @@ import mediaelements.IMediaPlayer;
 
 		// create media element
 		var loadTrait:MediaTraitBase = _mediaPlayer.media.getTrait(MediaTraitType.LOAD);
-		var hls:HLS = loadTrait.hls;
+		// NOTE: Access the 'hls' field this way because it isn't defined in MediaTraitBase.
+		var hls:HLS = loadTrait['hls'];
 		_mediaElement = new HLSMediaElement(this, hls, _autoplay, _preload, _timerRate, _startVolume, params);
 	}
 
@@ -513,6 +513,8 @@ import mediaelements.IMediaPlayer;
 
 						ExternalInterface.addCallback("setFullscreen", setFullscreen);
 						ExternalInterface.addCallback("setVideoSize", setVideoSize);
+
+						ExternalInterface.addCallback("showCaptions", showCaptions);
 
 						ExternalInterface.addCallback("positionFullscreenButton", positionFullscreenButton);
 						ExternalInterface.addCallback("hideFullscreenButton", hideFullscreenButton);
