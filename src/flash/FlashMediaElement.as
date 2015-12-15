@@ -219,6 +219,12 @@ import mediaelements.IMediaPlayer;
 		_mediaContainer.addMediaElement( element );
 		_mediaContainer.width = _stageWidth;
 		_mediaContainer.height = _stageHeight;
+
+        _mediaPlayer.volume = _startVolume;
+        if(_startVolume <= 0) {
+            _mediaPlayer.muted = true;
+        }
+
 	}
 
 
@@ -274,7 +280,7 @@ import mediaelements.IMediaPlayer;
 		var loadTrait:MediaTraitBase = _mediaPlayer.media.getTrait(MediaTraitType.LOAD);
 		// NOTE: Access the 'hls' field this way because it isn't defined in MediaTraitBase.
 		var hls:HLS = loadTrait['hls'];
-		_mediaElement = new HLSMediaElement(this, hls, _autoplay, _preload, _timerRate, _startVolume, params);
+		_mediaElement = new HLSMediaElement(this, hls, _autoplay, _preload, params);
 	}
 
 		public function FlashMediaElement() {

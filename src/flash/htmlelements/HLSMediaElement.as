@@ -34,7 +34,6 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
   private var _isManifestLoaded:Boolean = false;
   private var _isPaused:Boolean = true;
   private var _isEnded:Boolean = false;
-  private var _volume:Number = 1;
 
   private var _bytesLoaded:Number = 0;
   private var _bytesTotal:Number = 0;
@@ -52,11 +51,10 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
   private var _videoHeight:Number = -1;
 
 
-    public function HLSMediaElement(element:FlashMediaElement, hls:HLS, autoplay:Boolean, preload:String, timerRate:Number, startVolume:Number, params:Object)
+    public function HLSMediaElement(element:FlashMediaElement, hls:HLS, autoplay:Boolean, preload:String, params:Object)
     {
       _element = element;
       _autoplay = autoplay;
-      _volume = startVolume;
       _preload = preload;
 //      _video = new Video();
 //      addChild(_video);
@@ -107,7 +105,6 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _hls.addEventListener(HLSEvent.ID3_UPDATED,_id3Handler);
 
       _hls.stream.client.addHandler("onCaptionInfo", _onCaptionInfo);
-      _hls.stream.soundTransform = new SoundTransform(_volume);
 //      _video.attachNetStream(_hls.stream);
     }
 
@@ -315,7 +312,6 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
         ",qualityLevel:" + _level +
         ",paused:" + _isPaused +
         ",ended:" + _isEnded +
-        ",volume:" + _volume +
         ",src:\"" + _url + "\"" +
         ",bytesTotal:" + Math.round(1000*_duration) +
         ",bufferedBytes:" + Math.round(1000*(_position+_bufferedTime)) +
