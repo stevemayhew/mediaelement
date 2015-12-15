@@ -93,20 +93,12 @@
 						// allows clicking through the fullscreen button and controls down directly to Flash
 
 						/*
-						 When a user puts his mouse over the fullscreen button, the controls are disabled
-						 So we put a div over the video and another one on iether side of the fullscreen button
-						 that caputre mouse movement
-						 and restore the controls once the mouse moves outside of the fullscreen button
+						 Restore the controls once the mouse moves outside of the fullscreen button
 						*/
 
 						var fullscreenIsDisabled = false,
 							restoreControls = function() {
 								if (fullscreenIsDisabled) {
-									// hide the hovers
-									for (var i in hoverDivs) {
-										hoverDivs[i].hide();
-									}
-
 									// restore the control bar
 									fullscreenBtn.css('pointer-events', '');
 									t.controls.css('pointer-events', '');
@@ -118,53 +110,7 @@
 									fullscreenIsDisabled = false;
 								}
 							},
-							hoverDivs = {},
-							hoverDivNames = ['top', 'left', 'right', 'bottom'],
-							i, len,
-							positionHoverDivs = function() {
-								var fullScreenBtnOffsetLeft = fullscreenBtn.offset().left - t.container.offset().left,
-									fullScreenBtnOffsetTop = fullscreenBtn.offset().top - t.container.offset().top,
-									fullScreenBtnWidth = fullscreenBtn.outerWidth(true),
-									fullScreenBtnHeight = fullscreenBtn.outerHeight(true),
-									containerWidth = t.container.width(),
-									containerHeight = t.container.height();
-
-								for (i in hoverDivs) {
-									hoverDivs[i].css({position: 'absolute', top: 0, left: 0}); //, backgroundColor: '#f00'});
-								}
-
-								// over video, but not controls
-								hoverDivs['top']
-									.width( containerWidth )
-									.height( fullScreenBtnOffsetTop );
-
-								// over controls, but not the fullscreen button
-								hoverDivs['left']
-									.width( fullScreenBtnOffsetLeft )
-									.height( fullScreenBtnHeight )
-									.css({top: fullScreenBtnOffsetTop});
-
-								// after the fullscreen button
-								hoverDivs['right']
-									.width( containerWidth - fullScreenBtnOffsetLeft - fullScreenBtnWidth )
-									.height( fullScreenBtnHeight )
-									.css({top: fullScreenBtnOffsetTop,
-										 left: fullScreenBtnOffsetLeft + fullScreenBtnWidth});
-
-								// under the fullscreen button
-								hoverDivs['bottom']
-									.width( containerWidth )
-									.height( containerHeight - fullScreenBtnHeight - fullScreenBtnOffsetTop )
-									.css({top: fullScreenBtnOffsetTop + fullScreenBtnHeight});
-							};
-
-						t.globalBind('resize', function() {
-							positionHoverDivs();
-						});
-
-						for (i = 0, len = hoverDivNames.length; i < len; i++) {
-							hoverDivs[hoverDivNames[i]] = $('<div class="mejs-fullscreen-hover" />').appendTo(t.container).mouseover(restoreControls).hide();
-						}
+							i, len;
 
 						// on hover, kill the fullscreen button's HTML handling, allowing clicks down to Flash
 						fullscreenBtn.on('mouseover',function() {
@@ -183,13 +129,6 @@
 
 								// restore click-to-play
 								t.media.addEventListener('click', t.clickToPlayPauseCallback);
-
-								// show the divs that will restore things
-								for (i in hoverDivs) {
-									hoverDivs[i].show();
-								}
-
-								positionHoverDivs();
 
 								fullscreenIsDisabled = true;
 							}
