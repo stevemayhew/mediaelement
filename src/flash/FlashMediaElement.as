@@ -51,7 +51,7 @@ import org.osmf.traits.MediaTraitType;
 
 import mediaelements.IMediaPlayer;
 
-	public class FlashMediaElement extends MovieClip implements IMediaPlayer {
+	public class FlashMediaElement extends MovieClip {
 
 		private var _mediaUrl:String;
 		private var _jsInitFunction:String;
@@ -1201,35 +1201,39 @@ import mediaelements.IMediaPlayer;
 
 			//trace((_mediaElement.duration()*1).toString() + " / " + (_mediaElement.currentTime()*1).toString());
 			//trace("CurrentProgress:"+_mediaElement.currentProgress());
+            sendEventNoControlsUpdate(eventName, eventValues);
+        }
 
-			if (ExternalInterface.objectID != null && ExternalInterface.objectID.toString() != "") {
+        // Send the event to javascript with less fanfare.
+        public function sendEventNoControlsUpdate(eventName:String, eventValues:String):void {
+            if (ExternalInterface.objectID != null && ExternalInterface.objectID.toString() != "") {
 
-				//_output.appendText("event:" + eventName + " : " + eventValues);
-				//trace("event", eventName, eventValues);
+                //_output.appendText("event:" + eventName + " : " + eventValues);
+                //trace("event", eventName, eventValues);
 
-				if (eventValues == null)
-					eventValues == "";
+                if (eventValues == null)
+                    eventValues == "";
 
-				if (_isVideo) {
-					eventValues += (eventValues != "" ? "," : "") + "isFullScreen:" + _isFullScreen;
-				}
+                if (_isVideo) {
+                    eventValues += (eventValues != "" ? "," : "") + "isFullScreen:" + _isFullScreen;
+                }
 
-				eventValues = "{" + eventValues + "}";
+                eventValues = "{" + eventValues + "}";
+                /*
+                                  OLD DIRECT METHOD
+                                  ExternalInterface.call(
+                                  "function(id, name) { mejs.MediaPluginBridge.fireEvent(id,name," + eventValues + "); }",
+                                  ExternalInterface.objectID,
+                                  eventName);
+                                  */
+                // use set timeout for performance reasons
 
-				/*
-				OLD DIRECT METHOD
-				ExternalInterface.call(
-					"function(id, name) { mejs.MediaPluginBridge.fireEvent(id,name," + eventValues + "); }",
-					ExternalInterface.objectID,
-					eventName);
-				*/
-
-				// use set timeout for performance reasons
-				//if (!_alwaysShowControls) {
-					ExternalInterface.call("setTimeout", _jsCallbackFunction + "('" + ExternalInterface.objectID + "','" + eventName + "'," + eventValues + ")",0);
-				//}
-			}
-		}
+                //if (!_alwaysShowControls) {
+                ExternalInterface.call("setTimeout",
+                        _jsCallbackFunction + "('" + ExternalInterface.objectID + "','" + eventName + "'," + eventValues + ")", 0);
+                //}
+            }
+        }
 
 
 		private function updateControls(eventName:String):void {
