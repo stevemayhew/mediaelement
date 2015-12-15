@@ -51,7 +51,7 @@ import org.osmf.traits.MediaTraitType;
 
 import mediaelements.IMediaPlayer;
 
-	public class FlashMediaElement extends MovieClip {
+	public class FlashMediaElement extends MovieClip implements IMediaPlayer {
 
 		private var _mediaUrl:String;
 		private var _jsInitFunction:String;
