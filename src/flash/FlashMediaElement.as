@@ -133,7 +133,7 @@ import mediaelements.IMediaPlayer;
 	private var _mediaContainer:MediaContainer;
 	private var _osmfccDecoder:OSMFCCDecoder;
 	// TODO: Default this to false when we have a functioning button to toggle it.
-	private var _showClosedCaptions:Boolean = false;
+	private var _showClosedCaptions:Boolean = true;
 
 	// Code taken zipfile on http://www.adobe.com/devnet/flash/articles/mastering-osmf-pt3.html
 	// Zip is http://download.macromedia.com/pub/developer/flash/mastering-osmf-pt3.zip
@@ -394,11 +394,11 @@ import mediaelements.IMediaPlayer;
 
 			_playButton = _controlBar.getChildByName("play_btn") as SimpleButton;
 			_playButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
-				_mediaPlayer.play();
+				playMedia();
 			});
 			_pauseButton = _controlBar.getChildByName("pause_btn") as SimpleButton;
 			_pauseButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
-				_mediaPlayer.pause();
+				pauseMedia();
 			});
 
             var loader:Loader = new Loader();
@@ -417,14 +417,14 @@ import mediaelements.IMediaPlayer;
             _backButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
 				_output.appendText("_backButton click: " + _mediaPlayer.currentTime + "\n");
 
-                _mediaPlayer.currentTime = Math.max(_mediaPlayer.currentTime - 8, 0);
+				setCurrentTime(Math.max(_mediaPlayer.currentTime - 8, 0));
             });
 
             _controlBar.addChildAt(_forwardButton, playIndex);
             _forwardButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
 
 				_output.appendText("_forwardButton click: " + _mediaPlayer.currentTime + "\n");
-                _mediaPlayer.currentTime = Math.min(_mediaPlayer.currentTime + 30, _mediaPlayer.duration);
+				setCurrentTime(Math.min(_mediaPlayer.currentTime + 30, _mediaPlayer.duration));
             });
 
 
@@ -707,9 +707,7 @@ import mediaelements.IMediaPlayer;
 			var canSeekToPosition:Boolean = isNaN(_mediaPlayer.duration) ||  ( seekBarPosition <= _mediaPlayer.duration && seekBarPosition >= 0 );
 
 			if (canSeekToPosition) {
-				if (_mediaPlayer.canSeekTo(seekBarPosition)) {
-					_mediaPlayer.seek(seekBarPosition);
-				}
+				setCurrentTime(seekBarPosition);
 			}
 		}
 

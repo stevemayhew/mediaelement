@@ -27,7 +27,7 @@ public interface IMediaPlayer {
     /**
      * Pause playback of the current media.
      * If the media is not yet ready to be paused, playback will be paused when the media is ready.
-     * NOTE: pauseVideo() is an alias for playMedia().
+     * NOTE: pauseVideo() is an alias for pauseMedia().
      */
     function pauseMedia() : void;
     function pauseVideo() : void;
