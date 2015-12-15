@@ -33,5 +33,6 @@
         public static var LEVEL_SWITCH:String = "hlsLevelSwitch";
         public static var FRAGMENT_LOAD:String = "hlsFragmentLoad";
 		public static var ID3UPDATED:String = "id3updated";
+		public static var CAPTION_INFO:String = "captionInfo";
 	}
 }

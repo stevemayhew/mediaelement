@@ -105,8 +105,19 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _hls.addEventListener(HLSEvent.LEVEL_SWITCH,_levelSwitch);
       _hls.addEventListener(HLSEvent.FRAGMENT_LOADED,_fragmentLoaded);
       _hls.addEventListener(HLSEvent.ID3_UPDATED,_id3Handler);
+
+      _hls.stream.client.addHandler("onCaptionInfo", _onCaptionInfo);
       _hls.stream.soundTransform = new SoundTransform(_volume);
 //      _video.attachNetStream(_hls.stream);
+    }
+
+    /**
+     * Fire an event to the client when we encounter the first batch of caption info.
+     */
+    private function _onCaptionInfo(data:Object) :void {
+        sendEvent(HtmlMediaEvent.CAPTION_INFO);
+        // Remove this handler, so we don't continually fire it.
+        _hls.stream.client.removeHandler("onCaptionInfo", _onCaptionInfo);
     }
 
     private function _fragmentLoaded(event:HLSEvent):void {
