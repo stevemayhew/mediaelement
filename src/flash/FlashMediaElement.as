@@ -8,7 +8,8 @@ import com.adobe.cc.OSMFCCDecoder;
 	import flash.events.*;
 	import flash.media.*;
 	import flash.net.*;
-	import flash.text.*;
+import flash.system.Capabilities;
+import flash.text.*;
 	import flash.system.*;
 
 	import flash.media.Video;
@@ -21,6 +22,7 @@ import com.adobe.cc.OSMFCCDecoder;
 	import flash.utils.Timer;
 	import flash.external.ExternalInterface;
 	import flash.geom.Rectangle;
+import flash.utils.describeType;
 import flash.utils.getDefinitionByName;
 
 	import htmlelements.IMediaElement;
@@ -30,12 +32,17 @@ import flash.utils.getDefinitionByName;
 	import htmlelements.HLSMediaElement;
 
 import org.mangui.hls.HLS;
+import org.mangui.hls.HLSSettings;
 
 import org.osmf.containers.MediaContainer;
 import org.osmf.events.AudioEvent;
 
 import org.osmf.events.MediaFactoryEvent;
 import org.osmf.events.MediaPlayerStateChangeEvent;
+import org.osmf.layout.HorizontalAlign;
+import org.osmf.layout.LayoutMetadata;
+import org.osmf.layout.ScaleMode;
+import org.osmf.layout.VerticalAlign;
 
 import org.osmf.media.DefaultMediaFactory;
 import org.osmf.media.MediaElement;
@@ -60,11 +67,8 @@ import mediaelements.IMediaPlayer;
 		private var _autoplay:Boolean;
 		private var _preload:String;
 		private var _debug:Boolean;
-		private var _isVideo:Boolean;
-		private var _video:DisplayObject;
+		private var _isVideo:Boolean = true;
 		private var _timerRate:Number;
-		private var _stageWidth:Number;
-		private var _stageHeight:Number;
 		private var _enableSmoothing:Boolean;
 		private var _allowedPluginDomain:String;
 		private var _isFullScreen:Boolean = false;
@@ -120,7 +124,7 @@ import mediaelements.IMediaPlayer;
 		private var _inactiveTime:int;
         private var _timer:Timer;
         private var _idleTime:int;
-        private var _isMouseActive:Boolean
+        private var _isMouseActive:Boolean;
 		private var _isOverStage:Boolean = false;
 
 		// security checkes
@@ -133,19 +137,25 @@ import mediaelements.IMediaPlayer;
 	private var _mediaPlayer:MediaPlayer;
 	private var _mediaContainer:MediaContainer;
 	private var _osmfccDecoder:OSMFCCDecoder;
-	private var _showClosedCaptions:Boolean = false;
+	private var _showClosedCaptions:Boolean = true;
 
 	// Code taken zipfile on http://www.adobe.com/devnet/flash/articles/mastering-osmf-pt3.html
 	// Zip is http://download.macromedia.com/pub/developer/flash/mastering-osmf-pt3.zip
 	// Pointed to from https://github.com/mangui/flashls/issues/179, but couldn't get the code from that page to work.
 	protected function initPlayer():void
 	{
+        trace('initPlayer()');
+
 		// Create a mediafactory instance
 		_mediaFactory = new DefaultMediaFactory();
 
 		//Marker 1: Add the listeners for the plugin load call
 		_mediaFactory.addEventListener( MediaFactoryEvent.PLUGIN_LOAD, onPluginLoaded );
 		_mediaFactory.addEventListener( MediaFactoryEvent.PLUGIN_LOAD_ERROR, onPluginLoadFailed );
+		_mediaFactory.addEventListener( MediaFactoryEvent.MEDIA_ELEMENT_CREATE, function(event:MediaFactoryEvent):void {
+            trace( "MEDIA_ELEMENT_CREATE() ", event, event.mediaElement);
+
+        } );
 
 		//the simplified api controller for media
 		_mediaPlayer = new MediaPlayer();
@@ -156,6 +166,8 @@ import mediaelements.IMediaPlayer;
 
 		//Adds the container to the stage
 		this.addChild( _mediaContainer );
+
+        initPluginParams();
 
 		//Marker 2: Load the plugin
 		loadPlugin( "org.mangui.osmf.plugins.HLSPlugin" );
@@ -198,6 +210,14 @@ import mediaelements.IMediaPlayer;
 		var resource:URLResource = new StreamingURLResource( _mediaUrl );
 		var element:MediaElement = _mediaFactory.createMediaElement( resource );
 
+        var layout:LayoutMetadata = new LayoutMetadata();
+        layout.scaleMode = ScaleMode.LETTERBOX;
+        layout.verticalAlign = VerticalAlign.TOP;
+        layout.horizontalAlign = HorizontalAlign.LEFT;
+        layout.percentWidth = 100;
+        layout.percentHeight = 100;
+        element.addMetadata(LayoutMetadata.LAYOUT_NAMESPACE, layout);
+
 		_mediaPlayer.addEventListener(MediaPlayerStateChangeEvent.MEDIA_PLAYER_STATE_CHANGE, function(event:MediaPlayerStateChangeEvent) : void {
 			if (event.state == MediaPlayerState.READY) {
 				if (_osmfccDecoder == null) {
@@ -217,8 +237,8 @@ import mediaelements.IMediaPlayer;
 		// Add the media element
 		_mediaPlayer.media = element;
 		_mediaContainer.addMediaElement( element );
-		_mediaContainer.width = _stageWidth;
-		_mediaContainer.height = _stageHeight;
+		_mediaContainer.width = stage.width;
+		_mediaContainer.height = stage.height;
 
         _mediaPlayer.volume = _startVolume;
         if(_startVolume <= 0) {
@@ -246,6 +266,7 @@ import mediaelements.IMediaPlayer;
 
             this.sendEvent(HtmlMediaEvent.VOLUMECHANGE, eventValues);
         }
+
 
 	// Code taken from https://helpx.adobe.com/adobe-media-server/dev/configure-closed-captioning.html
 	private function onPlayerReady( event:MediaPlayerStateChangeEvent ):void
@@ -283,6 +304,42 @@ import mediaelements.IMediaPlayer;
 		_mediaElement = new HLSMediaElement(this, hls, _autoplay, _preload, params);
 	}
 
+        private function initPluginParams():void {
+
+            HLSSettings.logDebug = (params['hls.debug'] != undefined);
+
+               var typeInf:XML =  describeType(HLSSettings);
+               var variables:XMLList = typeInf..variable;
+               for each(var variable:XML in variables) {
+                   var vName:String = variable.@name;
+                   var vType:String = variable.@type;
+                   trace("name:" + vName + " type:" + vType);
+                   if (params.hasOwnProperty('hls.' + vName)) {
+                       var paramValue:String = params['hls.' + vName];
+                       switch (vType) {
+                           case 'Boolean':
+                               HLSSettings[vName] = Boolean(paramValue) === 'true';
+                               break;
+                           case 'Number':
+                           case 'int':
+                           case 'uint':
+                           case 'String':
+                               HLSSettings[vName] = paramValue;
+                               break;
+
+                           default:
+                               trace('unsupported type: '+vType);
+                       }
+                       trace('set '+vName+' = '+HLSSettings[vName]);
+                   }
+               }
+               for (var key:String in params) {
+                   trace("params["+key+"] = " + params[key]);
+
+               }
+               trace(JSON.stringify(HLSSettings));
+        }
+
 		public function FlashMediaElement() {
 			// check for security issues (borrowed from jPLayer)
 			checkFlashVars(loaderInfo.parameters);
@@ -306,7 +363,6 @@ import mediaelements.IMediaPlayer;
 			_output.filters = [new DropShadowFilter(1, 0x000000, 45, 1, 2, 2, 1)];
 
 			_output.text = "Initializing...\n";
-			addChild(_output);
 			_output.visible = securityIssue;
 
 			if (securityIssue) {
@@ -335,7 +391,6 @@ import mediaelements.IMediaPlayer;
 			_jsCallbackFunction = (params['jscallbackfunction'] != undefined) ? String(params['jscallbackfunction']) : "";
 			_autoplay = (params['autoplay'] != undefined) ? (String(params['autoplay']) == "true") : false;
 			_debug = (params['debug'] != undefined) ? (String(params['debug']) == "true") : false;
-			_isVideo = (params['isvideo'] != undefined) ? ((String(params['isvideo']) == "false") ? false : true  ) : true;
 			_timerRate = (params['timerrate'] != undefined) ? (parseInt(params['timerrate'], 10)) : 250;
 			_alwaysShowControls = (params['controls'] != undefined) ? (String(params['controls']) == "true") : false;
 			_enableSmoothing = (params['smoothing'] != undefined) ? (String(params['smoothing']) == "true") : false;
@@ -364,10 +419,10 @@ import mediaelements.IMediaPlayer;
 			// setup stage and player sizes/scales
 			stage.align = StageAlign.TOP_LEFT;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
-			_stageWidth = stage.stageWidth;
-			_stageHeight = stage.stageHeight;
 			this.addChild(_mediaElementDisplay);
 			stage.addChild(this);
+
+            traceObjects(stage);
 
 			//_autoplay = true;
 			//_mediaUrl  = "http://mediafiles.dts.edu/chapel/mp4/20100609.mp4";
@@ -444,8 +499,6 @@ import mediaelements.IMediaPlayer;
             loader.load(new URLRequest('/assets/tve/common/img/player-controls/argon_icon_player_jump_back_8_seconds.png'));
             _backButton = new SimpleButton(loader, loader, loader, loader);
 
-
-
             var playIndex:int = _controlBar.getChildIndex(_pauseButton);
             _controlBar.addChildAt(_backButton, playIndex);
 
@@ -471,7 +524,6 @@ import mediaelements.IMediaPlayer;
 			_hoverTime.visible=false;
 			_hoverTime.y=(_hoverTime.height/2)+1;
 			_hoverTime.x=0;
-
 
 
 			// Add new timeline scrubber events
@@ -525,8 +577,8 @@ import mediaelements.IMediaPlayer;
 			positionControls();
 
 			// Fire this once just to set the width on some dynamically sized scrub bar items;
-			_scrubBar.scaleX=0;
-			_scrubLoaded.scaleX=0;
+//			_scrubBar.scaleX=0;
+//			_scrubLoaded.scaleX=0;
 
 
 			if (ExternalInterface.available) { //  && !_alwaysShowControls
@@ -770,12 +822,12 @@ import mediaelements.IMediaPlayer;
 			}
 		}
 
-		private function positionControls(forced:Boolean=false):void {
+		private function positionControls():void {
 
 
 			if ( _controlStyle.toUpperCase() == "FLOATING" && _isFullScreen) {
 
-				trace("CONTROLS: floating");
+				trace("positionControls(): floating, fullscreen: "+_isFullScreen);
 				_hoverTime.y=(_hoverTime.height/2)+1;
 				_hoverTime.x=0;
 				_controlBarBg.width = 300;
@@ -798,7 +850,7 @@ import mediaelements.IMediaPlayer;
 				_duration.x = _controlBarBg.width - _duration.width - 10;
 				_duration.y = _controlBarBg.height - _duration.height -7;
 				//_currentTime.x = _controlBarBg.width - _duration.width - 10 - _currentTime.width - 10;
-				_currentTime.x = 5
+				_currentTime.x = 5;
 				_currentTime.y= _controlBarBg.height - _currentTime.height-7;
 
 				_fullscreenIcon.x = _controlBarBg.width - _fullscreenIcon.width - 7;
@@ -814,7 +866,7 @@ import mediaelements.IMediaPlayer;
 
 
 			} else {
-				trace("CONTROLS: normal, original");
+                trace("positionControls(): fullwidth, fullscreen: "+_isFullScreen);
 
 				/*
 				// Original style bottom display
@@ -830,8 +882,6 @@ import mediaelements.IMediaPlayer;
 				_scrubBar.width = _scrubTrack.width;
 				*/
 
-				// FLOATING MODE BOTTOM DISPLAY - similar to normal
-				trace("THAT WAY!");
 				_hoverTime.y=(_hoverTime.height/2)+1;
 				_hoverTime.x=0;
 				_controlBarBg.width = stage.stageWidth;
@@ -885,6 +935,10 @@ import mediaelements.IMediaPlayer;
 
 
 		public function stageClicked(e:MouseEvent):void {
+
+            if (e.altKey) {
+                traceObjects(stage);
+            }
 			//_output.appendText("click: " + e.stageX.toString() +","+e.stageY.toString() + "\n");
 			if (e.target == stage) {
 				sendEvent("click", "");
@@ -896,12 +950,10 @@ import mediaelements.IMediaPlayer;
 		}
 
 		public function resizeHandler(e:Event):void {
-
-			//_video.scaleX = stage.stageWidth / _stageWidth;
-			//_video.scaleY = stage.stageHeight / _stageHeight;
-			//positionControls();
-
+            positionControls();
 			repositionVideo();
+
+            traceObjects(_controlBar)
 		}
 
 		// START: Fullscreen
@@ -1086,17 +1138,10 @@ import mediaelements.IMediaPlayer;
 		public function setVideoSize(width:Number, height:Number):void {
 			_output.appendText("setVideoSize: " + width.toString() + "," + height.toString() + "\n");
 
-			_stageWidth = width;
-			_stageHeight = height;
-
-			if (_video != null) {
-				repositionVideo();
-				positionControls();
-				//_fullscreenButton.x = stage.stageWidth - _fullscreenButton.width - 10;
-				_output.appendText("result: " + _video.width.toString() + "," + _video.height.toString() + "\n");
-			}
-
-
+            repositionVideo();
+            positionControls();
+            //_fullscreenButton.x = stage.stageWidth - _fullscreenButton.width - 10;
+            _output.appendText("result: " + _mediaContainer.width.toString() + "," + _mediaContainer.height.toString() + "\n");
 		}
 
 		public function positionFullscreenButton(x:Number, y:Number, visibleAndAbove:Boolean ):void {
@@ -1146,63 +1191,12 @@ import mediaelements.IMediaPlayer;
 				fullscreen = false;
 			}
 
-			_output.appendText("positioning video "+stage.displayState+"\n");
+			_output.appendText("repositionVideo() "+stage.displayState+"\n");
+            _output.appendText(" ... stage: " + stage.stageWidth + "x" + stage.stageHeight + "\n");
+            _output.appendText(" ... screen: " + Capabilities.screenResolutionX + "x" + Capabilities.screenResolutionY + "\n");
 
-//			if (_mediaElement is VideoElement || _mediaElement is HLSMediaElement) {
-//
-//				if (isNaN(_nativeVideoWidth) || isNaN(_nativeVideoHeight) || _nativeVideoWidth <= 0 || _nativeVideoHeight <= 0) {
-//					_output.appendText("ERR: I dont' have the native dimension\n");
-//					return;
-//				}
-//
-//				// calculate ratios
-//				var stageRatio:Number, nativeRatio:Number;
-//
-//				_video.x = 0;
-//				_video.y = 0;
-//
-//				if(fullscreen == true) {
-//					stageRatio = flash.system.Capabilities.screenResolutionX/flash.system.Capabilities.screenResolutionY;
-//					nativeRatio = _nativeVideoWidth/_nativeVideoHeight;
-//
-//					// adjust size and position
-//					if (nativeRatio > stageRatio) {
-//						_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, _nativeVideoHeight * flash.system.Capabilities.screenResolutionX / _nativeVideoWidth);
-//						_video.y = flash.system.Capabilities.screenResolutionY/2 - _video.height/2;
-//					} else if (stageRatio > nativeRatio) {
-//						_mediaElement.setSize(_nativeVideoWidth * flash.system.Capabilities.screenResolutionY / _nativeVideoHeight, flash.system.Capabilities.screenResolutionY);
-//						_video.x = flash.system.Capabilities.screenResolutionX/2 - _video.width/2;
-//					} else if (stageRatio == nativeRatio) {
-//						_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
-//					}
-//
-//				} else {
-//					stageRatio = _stageWidth/_stageHeight;
-//					nativeRatio = _nativeVideoWidth/_nativeVideoHeight;
-//
-//					// adjust size and position
-//					if (nativeRatio > stageRatio) {
-//						_mediaElement.setSize(_stageWidth, _nativeVideoHeight * _stageWidth / _nativeVideoWidth);
-//						_video.y = _stageHeight/2 - _video.height/2;
-//					} else if (stageRatio > nativeRatio) {
-//						_mediaElement.setSize( _nativeVideoWidth * _stageHeight / _nativeVideoHeight, _stageHeight);
-//						_video.x = _stageWidth/2 - _video.width/2;
-//					} else if (stageRatio == nativeRatio) {
-//						_mediaElement.setSize(_stageWidth, _stageHeight);
-//					}
-//
-//				}
-//
-//			} else if (_mediaElement is YouTubeElement) {
-//				if(fullscreen == true) {
-//					_mediaElement.setSize(flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
-//
-//				} else {
-//					_mediaElement.setSize(_stageWidth, _stageHeight);
-//
-//				}
-//
-//			}
+            _mediaContainer.width = stage.width;
+            _mediaContainer.height = stage.height;
 
 			positionControls();
 		}
@@ -1357,6 +1351,38 @@ import mediaelements.IMediaPlayer;
 			item.transform.colorTransform = myColor;
 		}
 		// END: utility
+
+        internal static function traceObjects(obj:DisplayObjectContainer, level:int = 0 ):void {
+            var kids:int = obj.numChildren;
+            for( var i:int = 0; i < kids; i++)
+            {
+                var curObj:* = obj.getChildAt(i);
+                if(curObj)
+                {
+                    // add indentations for formatting
+                    var sp:int = 0;
+                    var spaceStr:String = "";
+                    while(sp < level)
+                    {
+                        spaceStr += "    ";
+                        sp++;
+                    }
+
+                    // trace the current object
+                    trace(spaceStr + curObj, (curObj.name) ? curObj.name : "no name", " x/y WxH:"+curObj.x+"/"+curObj.y+" "+curObj.width+"x"+curObj.height);
+                    if ('text' in curObj) {
+                        trace(spaceStr + " text: ", curObj.text);
+                    }
+                    // check if this object has children of its own to display
+                    if(curObj is DisplayObjectContainer && curObj.numChildren > 0)
+                    {
+                        trace(spaceStr + "|");	// formatting
+                        traceObjects(curObj, level+1);
+                        trace(" ");  // formatting
+                    }
+                }
+            }
+        }
 
 	}
 }

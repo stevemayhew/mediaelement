@@ -56,44 +56,6 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _element = element;
       _autoplay = autoplay;
       _preload = preload;
-//      _video = new Video();
-//      addChild(_video);
-
-     HLSSettings.logDebug = (params['hls.debug'] != undefined);
-
-        var typeInf:XML =  describeType(HLSSettings);
-        var variables:XMLList = typeInf..variable;
-        for each(var variable:XML in variables) {
-            var vName:String = variable.@name;
-            var vType:String = variable.@type;
-            trace("name:" + vName + " type:" + vType);
-            if (params.hasOwnProperty('hls.' + vName)) {
-                var paramValue:String = params['hls.' + vName];
-                switch (vType) {
-                    case 'Boolean':
-                        HLSSettings[vName] = Boolean(paramValue) === 'true';
-                        break;
-                    case 'Number':
-                    case 'int':
-                    case 'uint':
-                    case 'String':
-                        HLSSettings[vName] = paramValue;
-                        break;
-
-                    default:
-                        trace('unsupported type: '+vType);
-                }
-                trace('set '+vName+' = '+HLSSettings[vName]);
-            }
-        }
-        for (var key:String in params) {
-            trace("params["+key+"] = " + params[key]);
-
-        }
-        trace(JSON.stringify(HLSSettings));
-
-//        HLSSettings.logDebug = true;
-//      _hls = new HLS();
       _hls = hls;
       _hls.addEventListener(HLSEvent.PLAYBACK_COMPLETE,_completeHandler);
       _hls.addEventListener(HLSEvent.ERROR,_errorHandler);
@@ -159,6 +121,8 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
         for (var i:int = 0; i<hlsLevels.length; i++) {
             _hlsVariants.push(new VariantPlaylistInfo(hlsLevels[i]));
         }
+
+        trace("_manifestHandler():", event);
 
         sendEvent(HtmlMediaEvent.LOADEDMETADATA);
 
