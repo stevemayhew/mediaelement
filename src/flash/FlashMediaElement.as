@@ -137,7 +137,7 @@ import mediaelements.IMediaPlayer;
 	private var _mediaPlayer:MediaPlayer;
 	private var _mediaContainer:MediaContainer;
 	private var _osmfccDecoder:OSMFCCDecoder;
-	private var _showClosedCaptions:Boolean = true;
+	private var _showClosedCaptions:Boolean = false;
 
 	// Code taken zipfile on http://www.adobe.com/devnet/flash/articles/mastering-osmf-pt3.html
 	// Zip is http://download.macromedia.com/pub/developer/flash/mastering-osmf-pt3.zip

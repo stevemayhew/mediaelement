@@ -11,10 +11,10 @@
             <entry library-id="4458c9d9-2b70-48e1-a92b-4e59c29c9f6a">
               <dependency linkage="Merged" />
             </entry>
-            <entry library-id="8cf161fe-1b16-43a5-ae9e-eceb73a8fa42">
+            <entry library-id="d8fe3cad-69ae-45ce-873a-cd688ce9e17f">
               <dependency linkage="Merged" />
             </entry>
-            <entry library-id="d8fe3cad-69ae-45ce-873a-cd688ce9e17f">
+            <entry library-id="bc3effb2-a2a5-4e8c-89d8-54333cc09322">
               <dependency linkage="Merged" />
             </entry>
           </entries>
@@ -63,9 +63,9 @@
     </orderEntry>
     <orderEntry type="module-library" exported="">
       <library type="flex">
-        <properties id="8cf161fe-1b16-43a5-ae9e-eceb73a8fa42" />
+        <properties id="d8fe3cad-69ae-45ce-873a-cd688ce9e17f" />
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/OSMF.swc!/" />
+          <root url="jar://$MODULE_DIR$/OSMFCCLib.swc!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -73,12 +73,14 @@
     </orderEntry>
     <orderEntry type="module-library" exported="">
       <library type="flex">
-        <properties id="d8fe3cad-69ae-45ce-873a-cd688ce9e17f" />
+        <properties id="bc3effb2-a2a5-4e8c-89d8-54333cc09322" />
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/OSMFCCLib.swc!/" />
+          <root url="jar://$MODULE_DIR$/../../../OSMF/framework/OSMF/bin-debug/OSMF.swc!/" />
         </CLASSES>
         <JAVADOC />
-        <SOURCES />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/../../../OSMF/framework/OSMF" />
+        </SOURCES>
       </library>
     </orderEntry>
   </component>
