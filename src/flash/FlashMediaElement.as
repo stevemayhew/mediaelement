@@ -936,9 +936,6 @@ import mediaelements.IMediaPlayer;
 
 		public function stageClicked(e:MouseEvent):void {
 
-            if (e.altKey) {
-                traceObjects(stage);
-            }
 			//_output.appendText("click: " + e.stageX.toString() +","+e.stageY.toString() + "\n");
 			if (e.target == stage) {
 				sendEvent("click", "");
@@ -952,8 +949,6 @@ import mediaelements.IMediaPlayer;
 		public function resizeHandler(e:Event):void {
             positionControls();
 			repositionVideo();
-
-            traceObjects(_controlBar)
 		}
 
 		// START: Fullscreen

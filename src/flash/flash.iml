@@ -14,7 +14,7 @@
             <entry library-id="d8fe3cad-69ae-45ce-873a-cd688ce9e17f">
               <dependency linkage="Merged" />
             </entry>
-            <entry library-id="bc3effb2-a2a5-4e8c-89d8-54333cc09322">
+            <entry library-id="b0980649-2d0d-4951-b697-13c75b607333">
               <dependency linkage="Merged" />
             </entry>
           </entries>
@@ -73,9 +73,9 @@
     </orderEntry>
     <orderEntry type="module-library" exported="">
       <library type="flex">
-        <properties id="bc3effb2-a2a5-4e8c-89d8-54333cc09322" />
+        <properties id="b0980649-2d0d-4951-b697-13c75b607333" />
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../OSMF/framework/OSMF/bin-debug/OSMF.swc!/" />
+          <root url="jar://$MODULE_DIR$/OSMF.swc!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES>
