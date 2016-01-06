@@ -81,10 +81,6 @@ import mediaelements.IMediaPlayer;
 		private var _enablePseudoStreaming:Boolean;
 		private var _pseudoStreamingStartQueryParam:String;
 
-		// native video size (from meta data)
-		private var _nativeVideoWidth:Number = 0;
-		private var _nativeVideoHeight:Number = 0;
-
 		// visual elements
         private var _mediaElementDisplay:FlashMediaElementDisplay = new FlashMediaElementDisplay();
 		private var _output:TextField;
@@ -139,7 +135,7 @@ import mediaelements.IMediaPlayer;
 	private var _mediaPlayer:MediaPlayer;
 	private var _mediaContainer:MediaContainer;
 	private var _osmfccDecoder:OSMFCCDecoder;
-	private var _showClosedCaptions:Boolean = false;
+	private var _showClosedCaptions:Boolean = true;
 
 	// Code taken zipfile on http://www.adobe.com/devnet/flash/articles/mastering-osmf-pt3.html
 	// Zip is http://download.macromedia.com/pub/developer/flash/mastering-osmf-pt3.zip
@@ -949,39 +945,21 @@ import mediaelements.IMediaPlayer;
 		}
 
 		public function resizeHandler(e:Event):void {
-            trace("Resize: " + e);
+            trace("ResizeEvent: " + e);
+            _output.appendText("ResizeEvent - stage: " + stage.stageWidth + "x" + stage.stageHeight + " state: " + stage.displayState + "\n");
+            updateOnSizeChange();
+        }
+
+        private function updateOnSizeChange():void {
+            _isFullScreen = stage.displayState != StageDisplayState.NORMAL;
+
             positionControls();
-			repositionVideo();
-		}
+            repositionVideo();
+
+            _controlBar.visible = _isFullScreen;
+        }
 
 		// START: Fullscreen
-		private function enterFullscreen():void {
-
-			_output.appendText("enterFullscreen()\n");
-
-			var screenRectangle:Rectangle = new Rectangle(0, 0, flash.system.Capabilities.screenResolutionX, flash.system.Capabilities.screenResolutionY);
-			stage.fullScreenSourceRect = screenRectangle;
-
-			stage.displayState = StageDisplayState.FULL_SCREEN;
-
-			repositionVideo();
-			positionControls();
-			updateControls(HtmlMediaEvent.FULLSCREENCHANGE);
-
-			_controlBar.visible = true;
-
-			_isFullScreen = true;
-		}
-
-		private function exitFullscreen():void {
-
-			stage.displayState = StageDisplayState.NORMAL;
-
-
-			_controlBar.visible = false;
-
-			_isFullScreen = false;
-		}
 
 		public function setFullscreen(gofullscreen:Boolean):void {
 
@@ -991,11 +969,12 @@ import mediaelements.IMediaPlayer;
 				//_fullscreenButton.visible = false;
 
 				if (gofullscreen) {
-					enterFullscreen();
-
+                    _isFullScreen = true;
+        			stage.displayState = StageDisplayState.FULL_SCREEN;
 				} else {
-					exitFullscreen();
-				}
+                    _isFullScreen = false;
+        			stage.displayState = StageDisplayState.NORMAL;
+                }
 
 			} catch (error:Error) {
 
@@ -1011,42 +990,26 @@ import mediaelements.IMediaPlayer;
 
 		// control bar button/icon
 		public function fullScreenIconClick(e:MouseEvent):void {
-			try {
-				_controlBar.visible = true;
-				setFullscreen(!_isFullScreen);
-				repositionVideo();
-			} catch (error:Error) {
-			}
+            setFullscreen(!_isFullScreen);
 		}
 
 		// special floating fullscreen icon
 		public function fullscreenClick(e:MouseEvent):void {
 			//_fullscreenButton.visible = false;
 			_fullscreenButton.alpha = 0;
-
-			try {
-				_controlBar.visible = true;
-				setFullscreen(true);
-				repositionVideo();
-				positionControls();
-			} catch (error:Error) {
-			}
+            setFullscreen(true);
 		}
 
 
 		public function stageFullScreenChanged(e:FullScreenEvent):void {
 			_output.appendText("fullscreen event: " + e.fullScreen.toString() + "\n");
+            trace("fullscreen event: " + e);
 
-			//_fullscreenButton.visible = false;
-			_fullscreenButton.alpha = 0;
-			_isFullScreen = e.fullScreen;
+            updateOnSizeChange();
 
 			sendEvent(HtmlMediaEvent.FULLSCREENCHANGE, "isFullScreen:" + e.fullScreen );
-
-			if (!e.fullScreen) {
-				_controlBar.visible = _alwaysShowControls;
-			}
 		}
+
 		// END: Fullscreen
 
 		// START: external interface
@@ -1133,6 +1096,7 @@ import mediaelements.IMediaPlayer;
 			}
 		}
 
+        // TODO - deprecate this, changing the size of the SWF container (embed) will do the correct thing.
 		public function setVideoSize(width:Number, height:Number):void {
 			_output.appendText("setVideoSize: " + width.toString() + "," + height.toString() + "\n");
 
@@ -1181,13 +1145,8 @@ import mediaelements.IMediaPlayer;
 
 
 		private function repositionVideo():void {
-            var fullscreen:Boolean;
 
-			if (stage.displayState == "fullScreen") {
-				fullscreen = true;
-			} else {
-				fullscreen = false;
-			}
+            _isFullScreen = stage.displayState == "fullScreen";
 
 			_output.appendText("repositionVideo() "+stage.displayState+"\n");
             _output.appendText(" ... stage: " + stage.stageWidth + "x" + stage.stageHeight + "\n");
@@ -1201,28 +1160,6 @@ import mediaelements.IMediaPlayer;
 
 		// SEND events to JavaScript
 		public function sendEvent(eventName:String, eventValues:String):void {
-
-			// special video event
-			if (eventName == HtmlMediaEvent.LOADEDMETADATA && _isVideo) {
-
-				_output.appendText("METADATA RECEIVED: ");
-
-				try {
-					_nativeVideoWidth = _mediaPlayer.mediaWidth;
-					_nativeVideoHeight = _mediaPlayer.mediaHeight;
-				} catch (e:Error) {
-					_output.appendText(e.toString() + "\n");
-				}
-
-				_output.appendText(_nativeVideoWidth.toString() + "x" + _nativeVideoHeight.toString() + "\n");
-
-
-				if(stage.displayState == "fullScreen" ) {
-					setVideoSize(_nativeVideoWidth, _nativeVideoHeight);
-				}
-				repositionVideo();
-
-			}
 
 			updateControls(eventName);
 
