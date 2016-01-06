@@ -155,7 +155,9 @@ module.exports = function(grunt) {
             '-define+=CONFIG::cdnBuild,<%= cdnBuild %>',
             '-library-path+="<%= flexPath %>/lib"',
             '-include-libraries+=src/flash/flashmediaelement.swc',
-            '-include-libraries+=src/flash/flashls.swc -use-network=true',
+            '-include-libraries+=src/flash/OSMF.swc',
+            '-include-libraries+=src/flash/OSMFCCLib.swc',
+            '-include-libraries+=src/flash/flashlsOSMF.swc -use-network=true',
             '-source-path src/flash',
             '-target-player 10.0',
             '-headless-server -static-link-runtime-shared-libraries'

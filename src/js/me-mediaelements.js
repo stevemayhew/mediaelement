@@ -51,6 +51,16 @@ mejs.HtmlMediaElement = {
 	setVideoSize: function (width, height) {
 		this.width = width;
 		this.height = height;
+	},
+
+	showCaptions: function(show, textTracks) {
+		if (textTracks) {
+			for (i = textTracks.length - 1; i >= 0; i--) {
+				if (textTracks[i].kind == "captions") {
+					textTracks[i].mode = show ? "showing" : "hidden";
+				}
+			}
+		}
 	}
 };
 
@@ -250,6 +260,12 @@ mejs.PluginMediaElement.prototype = {
 				this.pluginApi.setVideoSize(width, height);
 			}
 		//}
+	},
+
+	showCaptions: function(show, textTracks) {
+		if (this.pluginApi != null && this.pluginApi.showCaptions) {
+			this.pluginApi.showCaptions(show);
+		}
 	},
 
 	setFullscreen: function (fullscreen) {

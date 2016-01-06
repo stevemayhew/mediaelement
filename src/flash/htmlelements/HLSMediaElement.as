@@ -35,7 +35,6 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
   private var _isPaused:Boolean = true;
   private var _isEnded:Boolean = false;
   private var _volume:Number = 1;
-  private var _isMuted:Boolean = false;
 
   private var _bytesLoaded:Number = 0;
   private var _bytesTotal:Number = 0;
@@ -53,14 +52,14 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
   private var _videoHeight:Number = -1;
 
 
-    public function HLSMediaElement(element:FlashMediaElement, autoplay:Boolean, preload:String, timerRate:Number, startVolume:Number, params:Object)
+    public function HLSMediaElement(element:FlashMediaElement, hls:HLS, autoplay:Boolean, preload:String, timerRate:Number, startVolume:Number, params:Object)
     {
       _element = element;
       _autoplay = autoplay;
       _volume = startVolume;
       _preload = preload;
-      _video = new Video();
-      addChild(_video);
+//      _video = new Video();
+//      addChild(_video);
 
      HLSSettings.logDebug = (params['hls.debug'] != undefined);
 
@@ -96,7 +95,8 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
         trace(JSON.stringify(HLSSettings));
 
 //        HLSSettings.logDebug = true;
-      _hls = new HLS();
+//      _hls = new HLS();
+      _hls = hls;
       _hls.addEventListener(HLSEvent.PLAYBACK_COMPLETE,_completeHandler);
       _hls.addEventListener(HLSEvent.ERROR,_errorHandler);
       _hls.addEventListener(HLSEvent.MANIFEST_LOADED,_manifestHandler);
@@ -105,8 +105,19 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _hls.addEventListener(HLSEvent.LEVEL_SWITCH,_levelSwitch);
       _hls.addEventListener(HLSEvent.FRAGMENT_LOADED,_fragmentLoaded);
       _hls.addEventListener(HLSEvent.ID3_UPDATED,_id3Handler);
+
+      _hls.stream.client.addHandler("onCaptionInfo", _onCaptionInfo);
       _hls.stream.soundTransform = new SoundTransform(_volume);
-      _video.attachNetStream(_hls.stream);
+//      _video.attachNetStream(_hls.stream);
+    }
+
+    /**
+     * Fire an event to the client when we encounter the first batch of caption info.
+     */
+    private function _onCaptionInfo(data:Object) :void {
+        sendEvent(HtmlMediaEvent.CAPTION_INFO);
+        // Remove this handler, so we don't continually fire it.
+        _hls.stream.client.removeHandler("onCaptionInfo", _onCaptionInfo);
     }
 
     private function _fragmentLoaded(event:HLSEvent):void {
@@ -144,7 +155,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _videoWidth = event.levels[0].width;
       _videoHeight = event.levels[0].height;
       _isManifestLoaded = true;
-      _hls.stage = _video.stage;
+//      _hls.stage = _video.stage;
 
         _hlsVariants = new <VariantPlaylistInfo>[];  // Reset
         var hlsLevels: Vector.<Level> = event.levels;
@@ -182,7 +193,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
           case HLSPlayStates.PLAYING:
             _isPaused = false;
             _isEnded = false;
-            _video.visible = true;
+//            _video.visible = true;
             sendEvent(HtmlMediaEvent.LOADEDDATA);
             sendEvent(HtmlMediaEvent.PLAY);
             sendEvent(HtmlMediaEvent.PLAYING);
@@ -238,7 +249,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
 
     public function stop():void{
       _hls.stream.close();
-      _video.clear();
+//      _video.clear();
       _isManifestLoaded = false;
       _duration = 0;
       _position = 0;
@@ -254,8 +265,8 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
     }
 
     public function setSize(width:Number, height:Number):void{
-    _video.width = width;
-    _video.height = height;
+//    _video.width = width;
+//    _video.height = height;
     }
 
     public function setCurrentTime(pos:Number):void{
@@ -266,34 +277,12 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
     }
 
     public function setVolume(vol:Number):void{
-      _volume = vol;
-      _isMuted = (_volume == 0);
-      _hls.stream.soundTransform = new SoundTransform(vol);
-      sendEvent(HtmlMediaEvent.VOLUMECHANGE);
     }
 
     public function getVolume():Number {
-      if(_isMuted) {
-        return 0;
-      } else {
-        return _volume;
-      }
     }
 
     public function setMuted(muted:Boolean):void {
-
-      // ignore if no change
-      if (muted === _isMuted)
-        return;
-
-      _isMuted = muted;
-
-      if (muted) {
-        _hls.stream.soundTransform = new SoundTransform(0);
-        sendEvent(HtmlMediaEvent.VOLUMECHANGE);
-      } else {
-        setVolume(_volume);
-      }
     }
 
     public function duration():Number{
@@ -324,7 +313,6 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
         ",framerate:" + _hls.stream.currentFPS +
         ",currentTime:" + _position +
         ",qualityLevel:" + _level +
-        ",muted:" + _isMuted +
         ",paused:" + _isPaused +
         ",ended:" + _isEnded +
         ",volume:" + _volume +
