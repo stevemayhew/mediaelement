@@ -16,7 +16,7 @@ _MediaElementPlayer: HTML5 `<video>` and `<audio>` player_
 
 A complete HTML/CSS audio/video player built on top `MediaElement.js` and `jQuery`. Many great HTML5 players have a completely separate Flash UI in fallback mode, but MediaElementPlayer.js uses the same HTML/CSS for all players.
 
-## How to Install
+## Building and Updating for TiVo
 _The following steps explain how to install on Linux and Mac machines._
 _Haven't been able to get this to work on Windows._
 
@@ -39,9 +39,15 @@ To build on Mac, follow the first set of steps then do this:
 (This meant that you shouldn't need to update anything in Gruntfile.js)
 * Build the flash file as Superuser: sudo grunt shell:buildFlash
 
-These next last steps are for all platforms:
-* Run 'grunt --features=playpause,volume,skipback,progress,current,jumpforward,closedcaption,fullscreen'
-* Copy output files from local-build to the destination folder.
+These next last steps are for all platforms, build and copy the results to perforce tree:
+
+```bash
+grunt --features=playpause,volume,skipback,progress,current,jumpforward,closedcaption,fullscreen
+
+cp local-build/flashmediaelement.swf /sandbox/b-tve/tve-web/assets/tve/common/js/vendor/mediaelementjs/
+cp local-build/mediaelement-and-player.* /sandbox/b-tve/tve-web/assets/tve/common/js/vendor/mediaelementjs/
+
+```
 
 ## Change Log
 
