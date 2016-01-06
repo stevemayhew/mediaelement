@@ -73,7 +73,7 @@ import mediaelements.IMediaPlayer;
 		private var _timerRate:Number;
 		private var _enableSmoothing:Boolean;
 		private var _allowedPluginDomain:String;
-		private var _isFullScreen:Boolean = false;
+
 		private var _startVolume:Number;
 		private var _controlStyle:String;
 		private var _autoHide:Boolean = true;
@@ -351,9 +351,6 @@ import mediaelements.IMediaPlayer;
                 Security.allowInsecureDomain('*');
             }
 
-            trace("Initial Stage w/h: " + stage.stageWidth + "/" + stage.stageHeight);
-            traceObjects(stage);
-
 			// add debug output
 			_output = new TextField();
 			_output.textColor = 0xeeeeee;
@@ -435,10 +432,6 @@ import mediaelements.IMediaPlayer;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 			this.addChild(_mediaElementDisplay);
 			stage.addChild(this);
-
-            trace("After add children Stage w/h: " + stage.width + "/" + stage.height + " stageWidth/stageHeight: " + stage.stageWidth + "/" + stage.stageHeight);
-
-            traceObjects(stage);
 
 			// position and hide
 			_fullscreenButton = _mediaElementDisplay.getChildByName("fullscreen_btn") as SimpleButton;
@@ -721,7 +714,7 @@ import mediaelements.IMediaPlayer;
 			if (_autoHide && (mouseX>=0 && mouseX<=stage.stageWidth) && (mouseY>=0 && mouseY<=stage.stageHeight)) {
 
 				// This could be move to a nice fade at some point...
-				_controlBar.visible = (_alwaysShowControls || _isFullScreen);
+				_controlBar.visible = (_alwaysShowControls || isFullScreen());
 				_isMouseActive = true;
 				_idleTime = 0;
 				_timer.reset();
@@ -762,7 +755,7 @@ import mediaelements.IMediaPlayer;
 					var seekBarPosition:Number =  ((event.localX / _scrubTrack.width) *_mediaPlayer.duration)*_scrubTrack.scaleX;
 					var hoverPos:Number = (seekBarPosition / _mediaPlayer.duration) *_scrubTrack.scaleX;
 
-					if (_isFullScreen) {
+					if (isFullScreen()) {
 						_hoverTime.x=event.target.parent.mouseX;
 					} else {
 						_hoverTime.x=mouseX;
@@ -823,9 +816,9 @@ import mediaelements.IMediaPlayer;
 		private function positionControls():void {
 
 
-			if ( _controlStyle.toUpperCase() == "FLOATING" && _isFullScreen) {
+			if ( _controlStyle.toUpperCase() == "FLOATING" && isFullScreen()) {
 
-				trace("positionControls(): floating, fullscreen: "+_isFullScreen);
+				trace("positionControls(): floating, fullscreen: "+isFullScreen());
 				_hoverTime.y=(_hoverTime.height/2)+1;
 				_hoverTime.x=0;
 				_controlBarBg.width = 300;
@@ -864,7 +857,7 @@ import mediaelements.IMediaPlayer;
 
 
 			} else {
-                trace("positionControls(): fullwidth, fullscreen: "+_isFullScreen);
+                trace("positionControls(): fullwidth, fullscreen: "+isFullScreen());
 
 				/*
 				// Original style bottom display
@@ -951,15 +944,17 @@ import mediaelements.IMediaPlayer;
         }
 
         private function updateOnSizeChange():void {
-            _isFullScreen = stage.displayState != StageDisplayState.NORMAL;
-
             positionControls();
             repositionVideo();
 
-            _controlBar.visible = _isFullScreen;
+            _controlBar.visible = isFullScreen();
         }
 
 		// START: Fullscreen
+
+        private function isFullScreen():Boolean {
+            return stage.displayState != StageDisplayState.NORMAL;
+        }
 
 		public function setFullscreen(gofullscreen:Boolean):void {
 
@@ -969,10 +964,8 @@ import mediaelements.IMediaPlayer;
 				//_fullscreenButton.visible = false;
 
 				if (gofullscreen) {
-                    _isFullScreen = true;
         			stage.displayState = StageDisplayState.FULL_SCREEN;
 				} else {
-                    _isFullScreen = false;
         			stage.displayState = StageDisplayState.NORMAL;
                 }
 
@@ -981,16 +974,13 @@ import mediaelements.IMediaPlayer;
 				// show the button when the security error doesn't let it work
 				//_fullscreenButton.visible = true;
 				_fullscreenButton.alpha = 1;
-
-				_isFullScreen = false;
-
 				_output.appendText("error setting fullscreen: " + error.message.toString() + "\n");
 			}
 		}
 
 		// control bar button/icon
 		public function fullScreenIconClick(e:MouseEvent):void {
-            setFullscreen(!_isFullScreen);
+            setFullscreen(!isFullScreen());
 		}
 
 		// special floating fullscreen icon
@@ -1146,8 +1136,6 @@ import mediaelements.IMediaPlayer;
 
 		private function repositionVideo():void {
 
-            _isFullScreen = stage.displayState == "fullScreen";
-
 			_output.appendText("repositionVideo() "+stage.displayState+"\n");
             _output.appendText(" ... stage: " + stage.stageWidth + "x" + stage.stageHeight + "\n");
             _output.appendText(" ... screen: " + Capabilities.screenResolutionX + "x" + Capabilities.screenResolutionY + "\n");
@@ -1179,7 +1167,7 @@ import mediaelements.IMediaPlayer;
                     eventValues == "";
 
                 if (_isVideo) {
-                    eventValues += (eventValues != "" ? "," : "") + "isFullScreen:" + _isFullScreen;
+                    eventValues += (eventValues != "" ? "," : "") + "isFullScreen:" + isFullScreen();
                 }
 
                 eventValues = "{" + eventValues + "}";
