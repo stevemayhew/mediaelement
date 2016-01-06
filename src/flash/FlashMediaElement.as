@@ -31,6 +31,8 @@ import flash.utils.getDefinitionByName;
 	import htmlelements.YouTubeElement;
 	import htmlelements.HLSMediaElement;
 
+import mx.graphics.shaderClasses.ColorBurnShader;
+
 import org.mangui.hls.HLS;
 import org.mangui.hls.HLSSettings;
 
@@ -237,8 +239,11 @@ import mediaelements.IMediaPlayer;
 		// Add the media element
 		_mediaPlayer.media = element;
 		_mediaContainer.addMediaElement( element );
-		_mediaContainer.width = stage.width;
-		_mediaContainer.height = stage.height;
+
+        trace("setMediaContainer w/h: " + stage.stageWidth + "/" + stage.stageHeight);
+
+		_mediaContainer.width = stage.stageWidth;
+		_mediaContainer.height = stage.stageHeight;
 
         _mediaPlayer.volume = _startVolume;
         if(_startVolume <= 0) {
@@ -350,7 +355,8 @@ import mediaelements.IMediaPlayer;
                 Security.allowInsecureDomain('*');
             }
 
-
+            trace("Initial Stage w/h: " + stage.stageWidth + "/" + stage.stageHeight);
+            traceObjects(stage);
 
 			// add debug output
 			_output = new TextField();
@@ -416,32 +422,27 @@ import mediaelements.IMediaPlayer;
 			if (isNaN(_timerRate))
 				_timerRate = 250;
 
+            // Prune the StaticText garbage left in the FlashMediaElementDisplay object from Flash CC
+            var index:int = 0;
+            var kids:int = _mediaElementDisplay.numChildren;
+            for(; index < kids; index++)
+            {
+                var curObj:* = _mediaElementDisplay.getChildAt(index);
+                if (curObj is StaticText) {
+                    break;
+                }
+            }
+            _mediaElementDisplay.removeChildAt(index);
+
 			// setup stage and player sizes/scales
 			stage.align = StageAlign.TOP_LEFT;
 			stage.scaleMode = StageScaleMode.NO_SCALE;
 			this.addChild(_mediaElementDisplay);
 			stage.addChild(this);
 
+            trace("After add children Stage w/h: " + stage.width + "/" + stage.height + " stageWidth/stageHeight: " + stage.stageWidth + "/" + stage.stageHeight);
+
             traceObjects(stage);
-
-			//_autoplay = true;
-			//_mediaUrl  = "http://mediafiles.dts.edu/chapel/mp4/20100609.mp4";
-			//_alwaysShowControls = true;
-			//_mediaUrl  = "../media/Parades-PastLives.mp3";
-			//_mediaUrl  = "../media/echo-hereweare.mp4";
-
-			//_mediaUrl = "http://video.ted.com/talks/podcast/AlGore_2006_480.mp4";
-			//_mediaUrl = "rtmp://stream2.france24.yacast.net/france24_live/en/f24_liveen";
-
-			//_mediaUrl = "http://www.youtube.com/watch?feature=player_embedded&v=yyWWXSwtPP0"; // hosea
-			//_mediaUrl = "http://www.youtube.com/watch?feature=player_embedded&v=m5VDDJlsD6I"; // railer with notes
-
-			//_alwaysShowControls = true;
-
-			//_debug=true;
-
-
-
 
 			// position and hide
 			_fullscreenButton = _mediaElementDisplay.getChildByName("fullscreen_btn") as SimpleButton;
@@ -619,6 +620,7 @@ import mediaelements.IMediaPlayer;
 				}
 
 			}
+            traceObjects(stage);
 
 			if (_preload != "none") {
 //				_mediaElement.load();
@@ -947,6 +949,7 @@ import mediaelements.IMediaPlayer;
 		}
 
 		public function resizeHandler(e:Event):void {
+            trace("Resize: " + e);
             positionControls();
 			repositionVideo();
 		}
@@ -1190,8 +1193,8 @@ import mediaelements.IMediaPlayer;
             _output.appendText(" ... stage: " + stage.stageWidth + "x" + stage.stageHeight + "\n");
             _output.appendText(" ... screen: " + Capabilities.screenResolutionX + "x" + Capabilities.screenResolutionY + "\n");
 
-            _mediaContainer.width = stage.width;
-            _mediaContainer.height = stage.height;
+            _mediaContainer.width = stage.stageWidth;
+            _mediaContainer.height = stage.stageHeight;
 
 			positionControls();
 		}
