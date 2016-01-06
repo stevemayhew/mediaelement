@@ -114,6 +114,8 @@ import mediaelements.IMediaPlayer;
 		private var _volumeUnMuted:SimpleButton;
         private var _backButton:SimpleButton;
       	private var _forwardButton:SimpleButton;
+		private var _ccOffButton:SimpleButton;
+		private var _ccOnButton:SimpleButton;
 		private var _scrubTrackColor:String;
 		private var _scrubBarColor:String;
 		private var _scrubLoadedColor:String;
@@ -505,6 +507,29 @@ import mediaelements.IMediaPlayer;
 				setCurrentTime(Math.min(_mediaPlayer.currentTime + 30, _mediaPlayer.duration));
             });
 
+			var ccOffStateLoader:Loader = new Loader();
+			ccOffStateLoader.load(new URLRequest('/assets/tve/common/img/player-controls/argon_icon_player_closed_caption_off.png'));
+			var ccOffOverStateLoader:Loader = new Loader();
+			ccOffOverStateLoader.load(new URLRequest('/assets/tve/common/img/player-controls/argon_icon_player_closed_caption_off_hv.png'));
+			_ccOffButton = new SimpleButton(ccOffStateLoader, ccOffOverStateLoader, ccOffStateLoader, ccOffStateLoader);
+
+			_controlBar.addChildAt(_ccOffButton, playIndex);
+			_ccOffButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
+				showCaptions(true);
+				sendEvent(HtmlMediaEvent.CAPTION_INFO, "captions:true");
+			});
+
+			var ccOnStateLoader:Loader = new Loader();
+			ccOnStateLoader.load(new URLRequest('/assets/tve/common/img/player-controls/argon_icon_player_closed_caption_on.png'));
+			var ccOnOverStateLoader:Loader = new Loader();
+			ccOnOverStateLoader.load(new URLRequest('/assets/tve/common/img/player-controls/argon_icon_player_closed_caption_on_hv.png'));
+			_ccOnButton = new SimpleButton(ccOnStateLoader, ccOnOverStateLoader, ccOnStateLoader, ccOnStateLoader);
+
+			_controlBar.addChildAt(_ccOnButton, playIndex);
+			_ccOnButton.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void {
+				showCaptions(false);
+				sendEvent(HtmlMediaEvent.CAPTION_INFO, "captions:false");
+			});
 
 			_pauseButton.visible = false;
 			_duration = _controlBar.getChildByName("duration_txt") as TextField;
@@ -899,7 +924,7 @@ import mediaelements.IMediaPlayer;
                 _scrubLoaded.x = _scrubBar.x = _scrubOverlay.x = _scrubTrack.x =  leftSideWidth;
                 _scrubLoaded.y = _scrubBar.y = _scrubOverlay.y = _scrubTrack.y = _controlBarBg.height - _scrubTrack.height - 9;
 
-                var rightSideWidth:int = _duration.width + 2 + _forwardButton.width + 2 + _volumeMuted.width + 5 + _fullscreenIcon.width + 7;
+                var rightSideWidth:int = _duration.width + 2 + _forwardButton.width + 2 + _ccOffButton.width + 2 + _volumeMuted.width + 5 + _fullscreenIcon.width + 7;
 
                 _scrubBar.width =  _scrubOverlay.width = _scrubTrack.width =  _controlBarBg.width - (rightSideWidth + 10 + leftSideWidth);
 
@@ -909,7 +934,13 @@ import mediaelements.IMediaPlayer;
                 _forwardButton.x = _duration.x + _duration.width + 2;
                 _forwardButton.y = ((_controlBarBg.height / 2) - (_forwardButton.height / 2)) + 1;
 
-                _volumeMuted.x = _volumeUnMuted.x = _forwardButton.x + _forwardButton.width + 2;
+				_ccOffButton.x = _ccOnButton.x = _forwardButton.x + _forwardButton.width + 2;
+				_ccOffButton.y = _ccOnButton.y = 10;
+
+				_ccOnButton.visible = _showClosedCaptions;
+				_ccOffButton.visible = !_showClosedCaptions;
+
+                _volumeMuted.x = _volumeUnMuted.x = _ccOffButton.x + _ccOffButton.width + 2;
                 _volumeMuted.y = _volumeUnMuted.y = 10;
 
 				_fullscreenIcon.x = _volumeMuted.x + _volumeMuted.width + 5;
@@ -1149,7 +1180,7 @@ import mediaelements.IMediaPlayer;
 		// SEND events to JavaScript
 		public function sendEvent(eventName:String, eventValues:String):void {
 
-			updateControls(eventName);
+			updateControls(eventName, eventValues);
 
 			//trace((_mediaElement.duration()*1).toString() + " / " + (_mediaElement.currentTime()*1).toString());
 			//trace("CurrentProgress:"+_mediaElement.currentProgress());
@@ -1188,7 +1219,7 @@ import mediaelements.IMediaPlayer;
         }
 
 
-		private function updateControls(eventName:String):void {
+		private function updateControls(eventName:String, eventValues:String):void {
 
 			//trace("updating controls");
 
@@ -1205,6 +1236,10 @@ import mediaelements.IMediaPlayer;
 					case "playing":
 						_playButton.visible = false;
 						_pauseButton.visible = true;
+						break;
+					case HtmlMediaEvent.CAPTION_INFO:
+						_ccOffButton.visible = (eventValues=="captions:false");
+						_ccOnButton.visible = (eventValues=="captions:true");
 						break;
 				}
 
