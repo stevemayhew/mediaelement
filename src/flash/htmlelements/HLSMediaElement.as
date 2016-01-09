@@ -59,7 +59,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
       _hls = hls;
       _hls.addEventListener(HLSEvent.PLAYBACK_COMPLETE,_completeHandler);
       _hls.addEventListener(HLSEvent.ERROR,_errorHandler);
-      _hls.addEventListener(HLSEvent.MANIFEST_LOADED,_manifestHandler);
+      _hls.addEventListener(HLSEvent.MANIFEST_LOADED, manifestHandler);
       _hls.addEventListener(HLSEvent.MEDIA_TIME,_mediaTimeHandler);
       _hls.addEventListener(HLSEvent.PLAYBACK_STATE,_stateHandler);
       _hls.addEventListener(HLSEvent.LEVEL_SWITCH,_levelSwitch);
@@ -107,7 +107,7 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
         _element.displayLogMessage(event.toString());
     };
 
-    private function _manifestHandler(event:HLSEvent):void {
+    public function manifestHandler(event:HLSEvent):void {
 
         // TODO this is wrong, actual video size can change each level switch
       _duration = event.levels[0].duration;
@@ -127,10 +127,12 @@ public class HLSMediaElement extends Sprite implements IMediaElement {
         sendEvent(HtmlMediaEvent.LOADEDMETADATA);
 
       sendEvent(HtmlMediaEvent.CANPLAY);
-      if(_autoplay || _playqueued) {
-        _playqueued = false;
-        _hls.stream.play();
-      }
+
+        // We are not handling this correctly now ???  Looks like it is done in FlashMediaElement
+//      if(_autoplay || _playqueued) {
+//        _playqueued = false;
+//        _hls.stream.play();
+//      }
     };
 
     private function _mediaTimeHandler(event:HLSEvent):void {

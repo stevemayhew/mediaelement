@@ -35,9 +35,13 @@ import mx.graphics.shaderClasses.ColorBurnShader;
 
 import org.mangui.hls.HLS;
 import org.mangui.hls.HLSSettings;
+import org.mangui.hls.event.HLSEvent;
+import org.mangui.hls.utils.Params2Settings;
+import org.mangui.osmf.plugins.traits.HLSNetStreamLoadTrait;
 
 import org.osmf.containers.MediaContainer;
 import org.osmf.events.AudioEvent;
+import org.osmf.events.MediaElementEvent;
 
 import org.osmf.events.MediaFactoryEvent;
 import org.osmf.events.MediaPlayerStateChangeEvent;
@@ -152,10 +156,6 @@ import mediaelements.IMediaPlayer;
 		//Marker 1: Add the listeners for the plugin load call
 		_mediaFactory.addEventListener( MediaFactoryEvent.PLUGIN_LOAD, onPluginLoaded );
 		_mediaFactory.addEventListener( MediaFactoryEvent.PLUGIN_LOAD_ERROR, onPluginLoadFailed );
-		_mediaFactory.addEventListener( MediaFactoryEvent.MEDIA_ELEMENT_CREATE, function(event:MediaFactoryEvent):void {
-            trace( "MEDIA_ELEMENT_CREATE() ", event, event.mediaElement);
-
-        } );
 
 		//the simplified api controller for media
 		_mediaPlayer = new MediaPlayer();
@@ -296,49 +296,44 @@ import mediaelements.IMediaPlayer;
 		_osmfccDecoder.type = CCType.CEA708;
 		_osmfccDecoder.service = CEA708Service.CC1;
 
-		if (_autoplay) {
-			this.playMedia();
-		}
-
 		// create media element
 		var loadTrait:MediaTraitBase = _mediaPlayer.media.getTrait(MediaTraitType.LOAD);
-		// NOTE: Access the 'hls' field this way because it isn't defined in MediaTraitBase.
-		var hls:HLS = loadTrait['hls'];
-		_mediaElement = new HLSMediaElement(this, hls, _autoplay, _preload, params);
+
+        if (loadTrait is HLSNetStreamLoadTrait) {
+            var hls:HLS = HLSNetStreamLoadTrait(loadTrait).hls;
+            trace("Media loaded, create HLSMediaElement and simulate ");
+            var hlsElement:HLSMediaElement = new HLSMediaElement(this, hls, _autoplay, _preload, params);
+
+            // Missed this, it already happened.  Yes this is a hack... We could switch to using OSMF traits.
+            hlsElement.manifestHandler(new HLSEvent(HLSEvent.MANIFEST_LOADED, hls.levels));
+
+            _mediaElement = hlsElement;
+
+        } else {
+            trace("player ready signaled without HLSNetStreamLoadTrait, fatal error");
+        }
+
+        if (_autoplay) {
+            this.playMedia();
+        }
+
 	}
 
         private function initPluginParams():void {
-
-            HLSSettings.logDebug = (params['hls.debug'] != undefined);
-
-               var typeInf:XML =  describeType(HLSSettings);
-               var variables:XMLList = typeInf..variable;
-               for each(var variable:XML in variables) {
-                   var vName:String = variable.@name;
-                   var vType:String = variable.@type;
-                   trace("name:" + vName + " type:" + vType);
-                   if (params.hasOwnProperty('hls.' + vName)) {
-                       var paramValue:String = params['hls.' + vName];
-                       switch (vType) {
-                           case 'Boolean':
-                               HLSSettings[vName] = Boolean(paramValue) === 'true';
-                               break;
-                           case 'Number':
-                           case 'int':
-                           case 'uint':
-                           case 'String':
-                               HLSSettings[vName] = paramValue;
-                               break;
-
-                           default:
-                               trace('unsupported type: '+vType);
-                       }
-                       trace('set '+vName+' = '+HLSSettings[vName]);
-                   }
-               }
                for (var key:String in params) {
-                   trace("params["+key+"] = " + params[key]);
+                   var value:* = params[key];
+                   trace("params["+key+"] = " + value);
 
+                   if (key.indexOf('hls.') == 0) {
+                       var paramName:String = key.substr(4);
+                       if (value == "NULL" || value == "null") {
+                           value = "";
+                       }
+//                       trace('Call Params2Settings: name:'+paramName+ " value:" +value + " default:"+HLSSettings[paramName]);
+                       Params2Settings.set(paramName.toLowerCase(), value);
+//                       trace('After Params2Settings: name:'+paramName+ " set to:" + HLSSettings[paramName]);
+
+                   }
                }
                trace(JSON.stringify(HLSSettings));
         }
@@ -1174,6 +1169,9 @@ import mediaelements.IMediaPlayer;
             _mediaContainer.width = stage.stageWidth;
             _mediaContainer.height = stage.stageHeight;
 
+            if (_osmfccDecoder != null) {
+                _osmfccDecoder.mediaContainer = _mediaContainer;
+            }
 			positionControls();
 		}
 
